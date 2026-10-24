@@ -354,7 +354,7 @@ namespace Openize.Heic.Decoder
                 candIntraPredModeB = IntraPredModeY[xPb, yPb - 1];
             }
 
-            IntraPredMode[] candModeList = new IntraPredMode[3];
+            IntraPredMode[] candModeList = Workspace.IntraPredModeCandidates;
 
             if (candIntraPredModeB == candIntraPredModeA)
             {
