@@ -19,8 +19,8 @@ namespace Openize.Heic.Decoder
         internal NeighbouringSamples FilteredNeighbours { get; } = new NeighbouringSamples(MaximumTransformSize);
         internal NeighbouringSamplesAvailability NeighbourAvailability { get; } = new NeighbouringSamplesAvailability(MaximumTransformSize);
         internal int[,] Predicted { get; } = new int[MaximumTransformSize, MaximumTransformSize];
-        internal int[,] Scaled { get; } = new int[MaximumTransformSize, MaximumTransformSize];
-        internal int[,] Intermediate { get; } = new int[MaximumTransformSize, MaximumTransformSize];
+        internal int[] Scaled { get; } = new int[MaximumTransformSize * MaximumTransformSize];
+        internal int[] Intermediate { get; } = new int[MaximumTransformSize * MaximumTransformSize];
         internal int[,] Transformed { get; } = new int[MaximumTransformSize, MaximumTransformSize];
         internal int[] TransformInput { get; } = new int[MaximumTransformSize];
         internal int[] TransformOutput { get; } = new int[MaximumTransformSize];

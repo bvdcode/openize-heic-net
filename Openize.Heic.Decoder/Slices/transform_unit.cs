@@ -103,7 +103,7 @@ namespace Openize.Heic.Decoder
             if (cbfLuma)
                 ResidualDecoder.Decode(stream, header, x0, y0, log2TrafoSize, 0);
 
-            Decode(stream, header.parentPicture, x0, y0, trafoDepth, log2TrafoSize, 0);
+            Decode(stream, picture, x0, y0, trafoDepth, log2TrafoSize, 0, cbfLuma);
 
             //if (cbfLuma || cbfChroma)
             if (sps.chroma_format_idc != 0) // this may be incorrect 
@@ -121,14 +121,14 @@ namespace Openize.Heic.Decoder
                     if (picture.cbf_cb[x0, y0][trafoDepth])
                         ResidualDecoder.Decode(stream, header, x0, y0, log2TrafoSizeC, 1);
 
-                    Decode(stream, header.parentPicture, x0 / sps.SubWidthC, y0 / sps.SubHeightC, trafoDepth, log2TrafoSizeC, 1);
+                    Decode(stream, picture, x0 / sps.SubWidthC, y0 / sps.SubHeightC, trafoDepth, log2TrafoSizeC, 1, picture.cbf_cb[x0, y0][trafoDepth]);
 
                     if (header.pps.sps.ChromaArrayType == 2)
                     {
                         if (picture.cbf_cb[x0, y0 + offset][trafoDepth])
                             ResidualDecoder.Decode(stream, header, x0, y0 + offset, log2TrafoSizeC, 1);
 
-                        Decode(stream, header.parentPicture, x0 / sps.SubWidthC, y0 / sps.SubHeightC + offset, trafoDepth, log2TrafoSizeC, 1);
+                        Decode(stream, picture, x0 / sps.SubWidthC, y0 / sps.SubHeightC + offset, trafoDepth, log2TrafoSizeC, 1, picture.cbf_cb[x0, y0 + offset][trafoDepth]);
                     }
 
                     // Cr
@@ -138,14 +138,14 @@ namespace Openize.Heic.Decoder
                     if (picture.cbf_cr[x0, y0][trafoDepth])
                         ResidualDecoder.Decode(stream, header, x0, y0, log2TrafoSizeC, 2);
 
-                    Decode(stream, header.parentPicture, x0 / sps.SubWidthC, y0 / sps.SubHeightC, trafoDepth, log2TrafoSizeC, 2);
+                    Decode(stream, picture, x0 / sps.SubWidthC, y0 / sps.SubHeightC, trafoDepth, log2TrafoSizeC, 2, picture.cbf_cr[x0, y0][trafoDepth]);
 
                     if (header.pps.sps.ChromaArrayType == 2)
                     {
                         if (picture.cbf_cr[x0, y0 + offset][trafoDepth])
                             ResidualDecoder.Decode(stream, header, x0, y0 + offset, log2TrafoSizeC, 2);
 
-                        Decode(stream, header.parentPicture, x0 / sps.SubWidthC, y0 / sps.SubHeightC + offset, trafoDepth, log2TrafoSizeC, 2);
+                        Decode(stream, picture, x0 / sps.SubWidthC, y0 / sps.SubHeightC + offset, trafoDepth, log2TrafoSizeC, 2, picture.cbf_cr[x0, y0 + offset][trafoDepth]);
                     }
                 }
                 else if (blkIdx == 3)
@@ -154,35 +154,35 @@ namespace Openize.Heic.Decoder
                     if (picture.cbf_cb[xBase, yBase][trafoDepth - 1])
                         ResidualDecoder.Decode(stream, header, xBase, yBase, log2TrafoSize, 1);
 
-                    Decode(stream, header.parentPicture, xBase / sps.SubWidthC, yBase / sps.SubHeightC, trafoDepth, log2TrafoSize, 1);
+                    Decode(stream, picture, xBase / sps.SubWidthC, yBase / sps.SubHeightC, trafoDepth, log2TrafoSize, 1, picture.cbf_cb[xBase, yBase][trafoDepth - 1]);
 
                     if (header.pps.sps.ChromaArrayType == 2)
                     {
                         if (picture.cbf_cb[xBase, yBase + offset][trafoDepth - 1])
                             ResidualDecoder.Decode(stream, header, xBase, yBase + offset, log2TrafoSize, 1);
 
-                        Decode(stream, header.parentPicture, xBase / sps.SubWidthC, yBase / sps.SubHeightC + offset, trafoDepth, log2TrafoSize, 1);
+                        Decode(stream, picture, xBase / sps.SubWidthC, yBase / sps.SubHeightC + offset, trafoDepth, log2TrafoSize, 1, picture.cbf_cb[xBase, yBase + offset][trafoDepth - 1]);
                     }
 
                     // Cr
                     if (picture.cbf_cr[xBase, yBase][trafoDepth - 1])
                         ResidualDecoder.Decode(stream, header, xBase, yBase, log2TrafoSize, 2);
 
-                    Decode(stream, header.parentPicture, xBase / sps.SubWidthC, yBase / sps.SubHeightC, trafoDepth, log2TrafoSize, 2);
+                    Decode(stream, picture, xBase / sps.SubWidthC, yBase / sps.SubHeightC, trafoDepth, log2TrafoSize, 2, picture.cbf_cr[xBase, yBase][trafoDepth - 1]);
 
                     if (header.pps.sps.ChromaArrayType == 2)
                     {
                         if (picture.cbf_cr[xBase, yBase + offset][trafoDepth - 1])
                             ResidualDecoder.Decode(stream, header, xBase, yBase + offset, log2TrafoSize, 2);
 
-                        Decode(stream, header.parentPicture, xBase / sps.SubWidthC, yBase / sps.SubHeightC + offset, trafoDepth, log2TrafoSize, 2);
+                        Decode(stream, picture, xBase / sps.SubWidthC, yBase / sps.SubHeightC + offset, trafoDepth, log2TrafoSize, 2, picture.cbf_cr[xBase, yBase + offset][trafoDepth - 1]);
                     }
                 }
             }
 
         }
 
-        private void Decode(BitStreamWithNalSupport stream, HeicPicture picture, int x0, int y0, int trafoDepth, int log2TrafoSize, int cIdx)
+        private void Decode(BitStreamWithNalSupport stream, HeicPicture picture, int x0, int y0, int trafoDepth, int log2TrafoSize, int cIdx, bool hasResidual)
         {
             PredMode cuPredMode = picture.CuPredMode[x0, y0];
             IntraPredMode intraPredMode;
@@ -209,10 +209,11 @@ namespace Openize.Heic.Decoder
                 // MODE_INTER is valid only for animations
             }
 
-            //if (cbf)
-            //{
-            //    scale_coefficients();
-            //}
+            if (!hasResidual)
+            {
+                StorePredictedBlock(picture, samples, x0, y0, nTbS, cIdx);
+                return;
+            }
 
             int[,] transSamples = ScalingAndTransformation(stream, picture, x0, y0, cuPredMode, trafoDepth, cIdx, nTbS);
 
@@ -231,6 +232,34 @@ namespace Openize.Heic.Decoder
                     for (int x = 0; x < nTbS; x++)
                         picture.pixels[cIdx][x0 + x, y0 + y] =
                             (byte)MathExtra.ClipBitDepth(samples[x, y] + transSamples[x, y], bitDepth);
+            }
+        }
+
+        private static void StorePredictedBlock(HeicPicture picture, int[,] samples,
+            int x0, int y0, int size, int component)
+        {
+            int bitDepth = component == 0 ? picture.sps.BitDepthY : picture.sps.BitDepthC;
+            if (picture.sps.BitDepthY > 8 || picture.sps.BitDepthC > 8)
+            {
+                ushort[,] pixels = picture.pixels_high_color_range[component];
+                for (int x = 0; x < size; x++)
+                {
+                    for (int y = 0; y < size; y++)
+                    {
+                        pixels[x0 + x, y0 + y] = (ushort)MathExtra.ClipBitDepth(samples[x, y], bitDepth);
+                    }
+                }
+            }
+            else
+            {
+                byte[,] pixels = picture.pixels[component];
+                for (int x = 0; x < size; x++)
+                {
+                    for (int y = 0; y < size; y++)
+                    {
+                        pixels[x0 + x, y0 + y] = (byte)MathExtra.ClipBitDepth(samples[x, y], bitDepth);
+                    }
+                }
             }
         }
 
@@ -577,13 +606,13 @@ namespace Openize.Heic.Decoder
 
                 }
 
-                int[,] d = GetScalingProcessForTransformCoefficients(stream, picture, xTbY, yTbY, cuPredMode, cIdx, nTbS, qP);
+                int[] d = GetScalingProcessForTransformCoefficients(stream, picture, xTbY, yTbY, cuPredMode, cIdx, nTbS, qP);
 
                 if (stream.Context.transform_skip_flag[cIdx])
                 {
                     for (int x = 0; x < nTbS; x++)
                         for (int y = 0; y < nTbS; y++)
-                            rotateSamples[x, y] = (rotateCoeffs ? d[nTbS - x - 1, nTbS - y - 1] : d[x, y]) << tsShift;
+                            rotateSamples[x, y] = (rotateCoeffs ? d[(nTbS - x - 1) * nTbS + nTbS - y - 1] : d[x * nTbS + y]) << tsShift;
                 }
                 else
                 {
@@ -600,7 +629,7 @@ namespace Openize.Heic.Decoder
         }
 
         // 8.6.3 Scaling process for transform coefficients
-        private int[,] GetScalingProcessForTransformCoefficients(BitStreamWithNalSupport stream, HeicPicture picture, 
+        private int[] GetScalingProcessForTransformCoefficients(BitStreamWithNalSupport stream, HeicPicture picture,
             int xTbY, int yTbY, PredMode cuPredMode, int cIdx, int nTbS, int qP)
         {
             // Inputs to this process are:
@@ -623,7 +652,7 @@ namespace Openize.Heic.Decoder
             int sizeId = (int)Math.Log(nTbS, 2) - 2;
             int matrixId = cIdx + (cuPredMode == PredMode.MODE_INTRA ? 0 : 3);
 
-            int[,] d = picture.Workspace.Scaled;
+            int[] d = picture.Workspace.Scaled;
             int scale;
 
             int coeff;
@@ -645,7 +674,7 @@ namespace Openize.Heic.Decoder
                     }
 
 
-                    d[x, y] = MathExtra.Clip3(coeffMin, coeffMax,
+                    d[x * nTbS + y] = MathExtra.Clip3(coeffMin, coeffMax,
                         ((coeff * scale *
                         levelScale[qP % 6] << (qP / 6)) + (1 << (bdShift - 1))) >> bdShift);
                 }
@@ -656,7 +685,7 @@ namespace Openize.Heic.Decoder
 
         // 8.6.4 Transformation process for scaled transform coefficients
         private int[,] TransformationOfScaledCoefficients(BitStreamWithNalSupport stream, HeicPicture picture,
-            int xTbY, int yTbY, PredMode cuPredMode, int cIdx, int nTbS, int[,] d)
+            int xTbY, int yTbY, PredMode cuPredMode, int cIdx, int nTbS, int[] d)
         {
             // Inputs to this process are:
             // – a luma location(xTbY, yTbY) specifying the top - left sample of the current luma transform block relative to the
@@ -670,7 +699,7 @@ namespace Openize.Heic.Decoder
             int coeffMax = cIdx == 0 ? picture.sps.CoeffMaxY : picture.sps.CoeffMaxC;
 
             int trType = (cuPredMode == PredMode.MODE_INTRA && nTbS == 4 && cIdx == 0) ? 1 : 0;
-            int[,] g = picture.Workspace.Intermediate;
+            int[] g = picture.Workspace.Intermediate;
             int[,] r = picture.Workspace.Transformed;
             int[] input = picture.Workspace.TransformInput;
             int[] output = picture.Workspace.TransformOutput;
@@ -678,23 +707,17 @@ namespace Openize.Heic.Decoder
 
             for (int x = 0; x < nTbS; x++)
             {
-                for (int j = 0; j < nTbS; j++)
-                {
-                    input[j] = d[x, j];
-                }
+                Array.Copy(d, x * nTbS, input, 0, nTbS);
                 InverseTransform.Apply(input, output, nTbS, matrix, trType == 1);
                 for (int i = 0; i < nTbS; i++)
                 {
-                    g[x, i] = MathExtra.Clip3(coeffMin, coeffMax, (output[i] + 64) >> 7);
+                    g[i * nTbS + x] = MathExtra.Clip3(coeffMin, coeffMax, (output[i] + 64) >> 7);
                 }
             }
 
             for (int y = 0; y < nTbS; y++)
             {
-                for (int j = 0; j < nTbS; j++)
-                {
-                    input[j] = g[j, y];
-                }
+                Array.Copy(g, y * nTbS, input, 0, nTbS);
                 InverseTransform.Apply(input, output, nTbS, matrix, trType == 1);
                 for (int i = 0; i < nTbS; i++)
                 {

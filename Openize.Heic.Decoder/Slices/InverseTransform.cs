@@ -28,22 +28,17 @@ namespace Openize.Heic.Decoder
                 return;
             }
 
-            ApplyCosine(input, output, size, 1, matrix);
+            ApplyCosine(input, output, size, 1, size, matrix);
         }
 
-        private static void ApplyCosine(int[] input, int[] output, int size, int inputStride, int[,] matrix)
+        private static void ApplyCosine(int[] input, int[] output, int size, int inputStride, int nonzeroLength, int[,] matrix)
         {
-            bool dcOnly = true;
-            for (int j = 1; j < size; j++)
+            while (nonzeroLength > 1 && input[(nonzeroLength - 1) * inputStride] == 0)
             {
-                if (input[j * inputStride] != 0)
-                {
-                    dcOnly = false;
-                    break;
-                }
+                nonzeroLength--;
             }
 
-            if (dcOnly)
+            if (nonzeroLength == 1)
             {
                 int dc = matrix[0, 0] * input[0];
                 for (int i = 0; i < size; i++)
@@ -54,13 +49,13 @@ namespace Openize.Heic.Decoder
             }
 
             int half = size / 2;
-            ApplyCosine(input, output, half, inputStride * 2, matrix);
+            ApplyCosine(input, output, half, inputStride * 2, (nonzeroLength + 1) / 2, matrix);
             int matrixStride = matrix.GetLength(0) / size;
 
             for (int i = 0; i < half; i++)
             {
                 int odd = 0;
-                for (int j = 1; j < size; j += 2)
+                for (int j = 1; j < nonzeroLength; j += 2)
                 {
                     odd += matrix[j * matrixStride, i] * input[j * inputStride];
                 }
