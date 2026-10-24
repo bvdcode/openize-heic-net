@@ -372,12 +372,20 @@ namespace Openize.Heic.Decoder
             // Outputs of this process are the predicted samples predSamples[x][y], with x, y = 0..nTbS - 1.
 
             int[,] predSamples = picture.Workspace.Predicted;
-
+            int shift = (int)Math.Log(nTbS, 2) + 1;
+            int topRight = p[nTbS, -1];
+            int bottomLeft = p[-1, nTbS];
             for (int x = 0; x < nTbS; x++)
+            {
+                int top = p[x, -1];
+                int right = (x + 1) * topRight;
                 for (int y = 0; y < nTbS; y++)
+                {
                     predSamples[x, y] =
-                        ((nTbS - 1 - x) * p[-1, y] + (x + 1) * p[nTbS, -1] +
-                         (nTbS - 1 - y) * p[x, -1] + (y + 1) * p[-1, nTbS] + nTbS) >> ((int)Math.Log(nTbS, 2) + 1);
+                        ((nTbS - 1 - x) * p[-1, y] + right +
+                         (nTbS - 1 - y) * top + (y + 1) * bottomLeft + nTbS) >> shift;
+                }
+            }
             
             return predSamples;
         }
