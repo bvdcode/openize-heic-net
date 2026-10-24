@@ -46,9 +46,9 @@ namespace Openize.Heic.Decoder
         internal readonly IntraPredMode[,] rem_intra_luma_pred_mode;
         internal readonly byte[,] intra_chroma_pred_mode;
         internal readonly bool[,] tu_residual_act_flag;
-        internal readonly bool[,][] cbf_cb;
-        internal readonly bool[,][] cbf_cr;
-        internal readonly bool[,][] cbf_luma;
+        internal readonly CodedBlockFlags cbf_cb;
+        internal readonly CodedBlockFlags cbf_cr;
+        internal readonly CodedBlockFlags cbf_luma;
 
         internal PictureWorkspace(seq_parameter_set_rbsp sps)
         {
@@ -102,9 +102,9 @@ namespace Openize.Heic.Decoder
 
             tu_residual_act_flag = new bool[widthMax, heightMax];
 
-            cbf_cb = new bool[widthMax, heightMax][];
-            cbf_cr = new bool[widthMax, heightMax][];
-            cbf_luma = new bool[widthMax, heightMax][];
+            cbf_cb = new CodedBlockFlags(widthMax, heightMax);
+            cbf_cr = new CodedBlockFlags(widthMax, heightMax);
+            cbf_luma = new CodedBlockFlags(widthMax, heightMax);
 
             SliceAddrRs = new uint[sps.PicWidthInCtbsY, sps.PicHeightInCtbsY];
             SliceHeaderIndex = new int[widthMax, heightMax];
@@ -169,9 +169,9 @@ namespace Openize.Heic.Decoder
             Array.Clear(rem_intra_luma_pred_mode, 0, rem_intra_luma_pred_mode.Length);
             Array.Clear(intra_chroma_pred_mode, 0, intra_chroma_pred_mode.Length);
             Array.Clear(tu_residual_act_flag, 0, tu_residual_act_flag.Length);
-            Array.Clear(cbf_cb, 0, cbf_cb.Length);
-            Array.Clear(cbf_cr, 0, cbf_cr.Length);
-            Array.Clear(cbf_luma, 0, cbf_luma.Length);
+            cbf_cb.Clear();
+            cbf_cr.Clear();
+            cbf_luma.Clear();
         }
     }
 }

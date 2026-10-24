@@ -65,9 +65,9 @@ namespace Openize.Heic.Decoder
         public bool[,] tu_residual_act_flag;
 
         //public bool[,][] split_transform_flag;
-        public bool[,][] cbf_cb;
-        public bool[,][] cbf_cr;
-        public bool[,][] cbf_luma;
+        public CodedBlockFlags cbf_cb;
+        public CodedBlockFlags cbf_cr;
+        public CodedBlockFlags cbf_luma;
 
         //public bool[,][] transform_skip_flag;
 

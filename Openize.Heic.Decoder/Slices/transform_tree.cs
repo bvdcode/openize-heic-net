@@ -9,7 +9,6 @@
  */
 
 using Openize.Heic.Decoder.IO;
-using System;
 
 namespace Openize.Heic.Decoder
 {
@@ -23,35 +22,6 @@ namespace Openize.Heic.Decoder
         {
             var sps = header.pps.sps;
             var picture = header.parentPicture;
-
-            int realMaxTrafoDepth = Math.Max((int)MaxTrafoDepth, trafoDepth);
-
-            if (picture.cbf_cb[x0, y0] == null)
-            {
-                picture.cbf_cb[x0, y0] = new bool[realMaxTrafoDepth + 1];
-            }
-            else if (picture.cbf_cb[x0, y0].Length <= trafoDepth)
-            {
-                Array.Resize(ref picture.cbf_cb[x0, y0], realMaxTrafoDepth + 1);
-            }
-
-            if (picture.cbf_cr[x0, y0] == null)
-            {
-                picture.cbf_cr[x0, y0] = new bool[realMaxTrafoDepth + 1];
-            }
-            else if (picture.cbf_cr[x0, y0].Length <= trafoDepth)
-            {
-                Array.Resize(ref picture.cbf_cr[x0, y0], realMaxTrafoDepth + 1);
-            }
-
-            if (picture.cbf_luma[x0, y0] == null)
-            {
-                picture.cbf_luma[x0, y0] = new bool[realMaxTrafoDepth + 1];
-            }
-            else if (picture.cbf_luma[x0, y0].Length <= trafoDepth)
-            {
-                Array.Resize(ref picture.cbf_luma[x0, y0], realMaxTrafoDepth + 1);
-            }
 
             if (log2TrafoSize <= sps.MaxTbLog2SizeY &&
                 log2TrafoSize > sps.MinTbLog2SizeY &&
@@ -76,20 +46,20 @@ namespace Openize.Heic.Decoder
 
             if ((log2TrafoSize > 2 && sps.ChromaArrayType != 0) || sps.ChromaArrayType == 3)
             {
-                if (trafoDepth == 0 || picture.cbf_cb[xBase, yBase][trafoDepth - 1])
+                if (trafoDepth == 0 || picture.cbf_cb[xBase, yBase, trafoDepth - 1])
                 {
-                    picture.cbf_cb[x0, y0][trafoDepth] = stream.Cabac.read_cbf_chroma(trafoDepth);
+                    picture.cbf_cb[x0, y0, trafoDepth] = stream.Cabac.read_cbf_chroma(trafoDepth);
 
                     if (sps.ChromaArrayType == 2 && (!split_transform_flag || log2TrafoSize == 3))
-                        picture.cbf_cb[x0, y0 + (1 << (log2TrafoSize - 1))][trafoDepth] = stream.Cabac.read_cbf_chroma(trafoDepth);
+                        picture.cbf_cb[x0, y0 + (1 << (log2TrafoSize - 1)), trafoDepth] = stream.Cabac.read_cbf_chroma(trafoDepth);
                 }
 
-                if (trafoDepth == 0 || picture.cbf_cr[xBase, yBase][trafoDepth - 1])
+                if (trafoDepth == 0 || picture.cbf_cr[xBase, yBase, trafoDepth - 1])
                 {
-                    picture.cbf_cr[x0, y0][trafoDepth] = stream.Cabac.read_cbf_chroma(trafoDepth);
+                    picture.cbf_cr[x0, y0, trafoDepth] = stream.Cabac.read_cbf_chroma(trafoDepth);
 
                     if (sps.ChromaArrayType == 2 && (!split_transform_flag || log2TrafoSize == 3))
-                        picture.cbf_cr[x0, y0 + (1 << (log2TrafoSize - 1))][trafoDepth] = stream.Cabac.read_cbf_chroma(trafoDepth);
+                        picture.cbf_cr[x0, y0 + (1 << (log2TrafoSize - 1)), trafoDepth] = stream.Cabac.read_cbf_chroma(trafoDepth);
                 }
             }
 
@@ -106,13 +76,13 @@ namespace Openize.Heic.Decoder
             {
                 if (picture.CuPredMode[x0, y0] == PredMode.MODE_INTRA || 
                     trafoDepth != 0 ||
-                    picture.cbf_cb[x0, y0][trafoDepth] ||
-                    picture.cbf_cr[x0, y0][trafoDepth] ||
+                    picture.cbf_cb[x0, y0, trafoDepth] ||
+                    picture.cbf_cr[x0, y0, trafoDepth] ||
                     (header.pps.sps.ChromaArrayType == 2 &&
-                    (picture.cbf_cb[x0, y0 + (1 << (log2TrafoSize - 1))][trafoDepth] ||
-                    picture.cbf_cr[x0, y0 + (1 << (log2TrafoSize - 1))][trafoDepth])))
+                    (picture.cbf_cb[x0, y0 + (1 << (log2TrafoSize - 1)), trafoDepth] ||
+                    picture.cbf_cr[x0, y0 + (1 << (log2TrafoSize - 1)), trafoDepth])))
                 {
-                    picture.cbf_luma[x0, y0][trafoDepth] = stream.Cabac.read_cbf_luma(trafoDepth); 
+                    picture.cbf_luma[x0, y0, trafoDepth] = stream.Cabac.read_cbf_luma(trafoDepth);
                 }
 
                 new transform_unit(stream, header, partMode, x0, y0, xBase, yBase, log2TrafoSize, trafoDepth, blkIdx);

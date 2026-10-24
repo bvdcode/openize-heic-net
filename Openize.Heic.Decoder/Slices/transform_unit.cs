@@ -29,13 +29,13 @@ namespace Openize.Heic.Decoder
 
             int offset = 1 << log2TrafoSizeC;
 
-            bool cbfLuma = picture.cbf_luma[x0, y0][trafoDepth];
+            bool cbfLuma = picture.cbf_luma[x0, y0, trafoDepth];
             bool cbfChroma =
-                picture.cbf_cb[xC, yC][cbfDepthC] ||
-                picture.cbf_cr[xC, yC][cbfDepthC] ||
+                picture.cbf_cb[xC, yC, cbfDepthC] ||
+                picture.cbf_cr[xC, yC, cbfDepthC] ||
                 (header.pps.sps.ChromaArrayType == 2 &&
-                (picture.cbf_cb[xC, yC + (1 << log2TrafoSizeC)][cbfDepthC] ||
-                 picture.cbf_cr[xC, yC + (1 << log2TrafoSizeC)][cbfDepthC]));
+                (picture.cbf_cb[xC, yC + (1 << log2TrafoSizeC), cbfDepthC] ||
+                 picture.cbf_cr[xC, yC + (1 << log2TrafoSizeC), cbfDepthC]));
 
             if (cbfLuma || cbfChroma)
             {
@@ -118,64 +118,64 @@ namespace Openize.Heic.Decoder
                     if (res_scale_needed)
                         picture.ResScaleVal[1][x0, y0] = get_ResScaleVal(stream, 0);
 
-                    if (picture.cbf_cb[x0, y0][trafoDepth])
+                    if (picture.cbf_cb[x0, y0, trafoDepth])
                         ResidualDecoder.Decode(stream, header, x0, y0, log2TrafoSizeC, 1);
 
-                    Decode(stream, picture, x0 / sps.SubWidthC, y0 / sps.SubHeightC, trafoDepth, log2TrafoSizeC, 1, picture.cbf_cb[x0, y0][trafoDepth]);
+                    Decode(stream, picture, x0 / sps.SubWidthC, y0 / sps.SubHeightC, trafoDepth, log2TrafoSizeC, 1, picture.cbf_cb[x0, y0, trafoDepth]);
 
                     if (header.pps.sps.ChromaArrayType == 2)
                     {
-                        if (picture.cbf_cb[x0, y0 + offset][trafoDepth])
+                        if (picture.cbf_cb[x0, y0 + offset, trafoDepth])
                             ResidualDecoder.Decode(stream, header, x0, y0 + offset, log2TrafoSizeC, 1);
 
-                        Decode(stream, picture, x0 / sps.SubWidthC, y0 / sps.SubHeightC + offset, trafoDepth, log2TrafoSizeC, 1, picture.cbf_cb[x0, y0 + offset][trafoDepth]);
+                        Decode(stream, picture, x0 / sps.SubWidthC, y0 / sps.SubHeightC + offset, trafoDepth, log2TrafoSizeC, 1, picture.cbf_cb[x0, y0 + offset, trafoDepth]);
                     }
 
                     // Cr
                     if (res_scale_needed)
                         picture.ResScaleVal[2][x0, y0] = get_ResScaleVal(stream, 1);
 
-                    if (picture.cbf_cr[x0, y0][trafoDepth])
+                    if (picture.cbf_cr[x0, y0, trafoDepth])
                         ResidualDecoder.Decode(stream, header, x0, y0, log2TrafoSizeC, 2);
 
-                    Decode(stream, picture, x0 / sps.SubWidthC, y0 / sps.SubHeightC, trafoDepth, log2TrafoSizeC, 2, picture.cbf_cr[x0, y0][trafoDepth]);
+                    Decode(stream, picture, x0 / sps.SubWidthC, y0 / sps.SubHeightC, trafoDepth, log2TrafoSizeC, 2, picture.cbf_cr[x0, y0, trafoDepth]);
 
                     if (header.pps.sps.ChromaArrayType == 2)
                     {
-                        if (picture.cbf_cr[x0, y0 + offset][trafoDepth])
+                        if (picture.cbf_cr[x0, y0 + offset, trafoDepth])
                             ResidualDecoder.Decode(stream, header, x0, y0 + offset, log2TrafoSizeC, 2);
 
-                        Decode(stream, picture, x0 / sps.SubWidthC, y0 / sps.SubHeightC + offset, trafoDepth, log2TrafoSizeC, 2, picture.cbf_cr[x0, y0 + offset][trafoDepth]);
+                        Decode(stream, picture, x0 / sps.SubWidthC, y0 / sps.SubHeightC + offset, trafoDepth, log2TrafoSizeC, 2, picture.cbf_cr[x0, y0 + offset, trafoDepth]);
                     }
                 }
                 else if (blkIdx == 3)
                 {
                     // Cb
-                    if (picture.cbf_cb[xBase, yBase][trafoDepth - 1])
+                    if (picture.cbf_cb[xBase, yBase, trafoDepth - 1])
                         ResidualDecoder.Decode(stream, header, xBase, yBase, log2TrafoSize, 1);
 
-                    Decode(stream, picture, xBase / sps.SubWidthC, yBase / sps.SubHeightC, trafoDepth, log2TrafoSize, 1, picture.cbf_cb[xBase, yBase][trafoDepth - 1]);
+                    Decode(stream, picture, xBase / sps.SubWidthC, yBase / sps.SubHeightC, trafoDepth, log2TrafoSize, 1, picture.cbf_cb[xBase, yBase, trafoDepth - 1]);
 
                     if (header.pps.sps.ChromaArrayType == 2)
                     {
-                        if (picture.cbf_cb[xBase, yBase + offset][trafoDepth - 1])
+                        if (picture.cbf_cb[xBase, yBase + offset, trafoDepth - 1])
                             ResidualDecoder.Decode(stream, header, xBase, yBase + offset, log2TrafoSize, 1);
 
-                        Decode(stream, picture, xBase / sps.SubWidthC, yBase / sps.SubHeightC + offset, trafoDepth, log2TrafoSize, 1, picture.cbf_cb[xBase, yBase + offset][trafoDepth - 1]);
+                        Decode(stream, picture, xBase / sps.SubWidthC, yBase / sps.SubHeightC + offset, trafoDepth, log2TrafoSize, 1, picture.cbf_cb[xBase, yBase + offset, trafoDepth - 1]);
                     }
 
                     // Cr
-                    if (picture.cbf_cr[xBase, yBase][trafoDepth - 1])
+                    if (picture.cbf_cr[xBase, yBase, trafoDepth - 1])
                         ResidualDecoder.Decode(stream, header, xBase, yBase, log2TrafoSize, 2);
 
-                    Decode(stream, picture, xBase / sps.SubWidthC, yBase / sps.SubHeightC, trafoDepth, log2TrafoSize, 2, picture.cbf_cr[xBase, yBase][trafoDepth - 1]);
+                    Decode(stream, picture, xBase / sps.SubWidthC, yBase / sps.SubHeightC, trafoDepth, log2TrafoSize, 2, picture.cbf_cr[xBase, yBase, trafoDepth - 1]);
 
                     if (header.pps.sps.ChromaArrayType == 2)
                     {
-                        if (picture.cbf_cr[xBase, yBase + offset][trafoDepth - 1])
+                        if (picture.cbf_cr[xBase, yBase + offset, trafoDepth - 1])
                             ResidualDecoder.Decode(stream, header, xBase, yBase + offset, log2TrafoSize, 2);
 
-                        Decode(stream, picture, xBase / sps.SubWidthC, yBase / sps.SubHeightC + offset, trafoDepth, log2TrafoSize, 2, picture.cbf_cr[xBase, yBase + offset][trafoDepth - 1]);
+                        Decode(stream, picture, xBase / sps.SubWidthC, yBase / sps.SubHeightC + offset, trafoDepth, log2TrafoSize, 2, picture.cbf_cr[xBase, yBase + offset, trafoDepth - 1]);
                     }
                 }
             }
