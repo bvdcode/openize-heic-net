@@ -15,6 +15,8 @@ namespace Openize.Heic.Decoder
 {
     internal class HeicPicture
     {
+        internal BlockWorkspace Workspace { get; } = new BlockWorkspace();
+
         public Dictionary<int, slice_segment_header> SliceHeaders { get; }
         public Dictionary<int, slice_segment_data> SliceUnits { get; }
 

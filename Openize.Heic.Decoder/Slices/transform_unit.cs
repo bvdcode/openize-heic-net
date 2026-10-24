@@ -189,7 +189,7 @@ namespace Openize.Heic.Decoder
 
             int residualDpcm = 0;
             int nTbS = 1 << log2TrafoSize;
-            int[,] samples = new int[nTbS, nTbS];
+            int[,] samples;
 
             if (cuPredMode == PredMode.MODE_INTRA)
             {
@@ -341,7 +341,7 @@ namespace Openize.Heic.Decoder
             // – a variable nTbS specifying the transform block size.
             // Outputs of this process are the predicted samples predSamples[x][y], with x, y = 0..nTbS - 1.
 
-            int[,] predSamples = new int[nTbS, nTbS];
+            int[,] predSamples = picture.Workspace.Predicted;
 
             for (int x = 0; x < nTbS; x++)
                 for (int y = 0; y < nTbS; y++)
@@ -369,7 +369,7 @@ namespace Openize.Heic.Decoder
             }
             dcVal >>= ((int)Math.Log(nTbS, 2) + 1);
 
-            int[,] predSamples = new int[nTbS, nTbS];
+            int[,] predSamples = picture.Workspace.Predicted;
 
             if (cIdx == 0 && nTbS < 32)
             {
@@ -410,7 +410,7 @@ namespace Openize.Heic.Decoder
             // – a variable cIdx specifying the colour component of the current block.
             // Outputs of this process are the predicted samples predSamples[x][y], with x, y = 0..nTbS − 1.
 
-            int[,] predSamples = new int[nTbS, nTbS];
+            int[,] predSamples = picture.Workspace.Predicted;
 
             int intraPredAngle = intraPredAngleTable[(int)intraPredMode];
 
@@ -420,7 +420,8 @@ namespace Openize.Heic.Decoder
             else if (picture.sps.sps_range_ext.implicit_rdpcm_enabled_flag && stream.Context.cu_transquant_bypass_flag)
                 disableIntraBoundaryFilter = true;
 
-            var reference = new int[3 * nTbS + 1];
+            int[] reference = picture.Workspace.Reference;
+            Array.Clear(reference, 0, reference.Length);
 
             if ((int)intraPredMode >= 18)
             {
@@ -538,7 +539,7 @@ namespace Openize.Heic.Decoder
                                  nTbS == 4 &&
                                  cuPredMode == PredMode.MODE_INTRA);
 
-            int[,] rotateSamples = new int[nTbS, nTbS];
+            int[,] rotateSamples = picture.Workspace.Transformed;
 
             if (stream.Context.cu_transquant_bypass_flag)
             {
@@ -621,8 +622,8 @@ namespace Openize.Heic.Decoder
             int sizeId = (int)Math.Log(nTbS, 2) - 2;
             int matrixId = cIdx + (cuPredMode == PredMode.MODE_INTRA ? 0 : 3);
 
-            int[,] m = new int[nTbS, nTbS];
-            int[,] d = new int[nTbS, nTbS];
+            int[,] d = picture.Workspace.Scaled;
+            int scale;
 
             int coeff;
 
@@ -635,16 +636,16 @@ namespace Openize.Heic.Decoder
                     if (!picture.sps.scaling_list_enabled_flag ||
                         (stream.Context.transform_skip_flag[cIdx] && nTbS > 4))
                     {
-                        m[x, y] = 16;
+                        scale = 16;
                     }
                     else
                     {
-                        m[x, y] = Scaling.ScalingFactor[sizeId][matrixId][x, y];
+                        scale = Scaling.ScalingFactor[sizeId][matrixId][x, y];
                     }
 
 
                     d[x, y] = MathExtra.Clip3(coeffMin, coeffMax,
-                        ((coeff * m[x, y] *
+                        ((coeff * scale *
                         levelScale[qP % 6] << (qP / 6)) + (1 << (bdShift - 1))) >> bdShift);
                 }
             }
@@ -668,38 +669,36 @@ namespace Openize.Heic.Decoder
             int coeffMax = cIdx == 0 ? picture.sps.CoeffMaxY : picture.sps.CoeffMaxC;
 
             int trType = (cuPredMode == PredMode.MODE_INTRA && nTbS == 4 && cIdx == 0) ? 1 : 0;
-            int mult = 1 << (5 - (int)Math.Log(nTbS, 2));
-
-            int[,] e = new int[nTbS, nTbS];
-            int[,] g = new int[nTbS, nTbS];
-            int[,] r = new int[nTbS, nTbS];
+            int[,] g = picture.Workspace.Intermediate;
+            int[,] r = picture.Workspace.Transformed;
+            int[] input = picture.Workspace.TransformInput;
+            int[] output = picture.Workspace.TransformOutput;
+            int[,] matrix = trType == 1 ? transMatrix4x4 : transMatrix32x32;
 
             for (int x = 0; x < nTbS; x++)
             {
-                if (trType == 1)
-                    for (int i = 0; i < nTbS; i++)
-                        for (int j = 0; j < nTbS; j++)
-                            e[x, i] += transMatrix4x4[j, i] * d[x, j];
-                else
-                    for (int i = 0; i < nTbS; i++)
-                        for (int j = 0; j < nTbS; j++)
-                            e[x, i] += transMatrix32x32[j * mult, i] * d[x, j];
+                for (int j = 0; j < nTbS; j++)
+                {
+                    input[j] = d[x, j];
+                }
+                InverseTransform.Apply(input, output, nTbS, matrix, trType == 1);
+                for (int i = 0; i < nTbS; i++)
+                {
+                    g[x, i] = MathExtra.Clip3(coeffMin, coeffMax, (output[i] + 64) >> 7);
+                }
             }
-
-            for (int x = 0; x < nTbS; x++)
-                for (int y = 0; y < nTbS; y++)
-                    g[x, y] = MathExtra.Clip3(coeffMin, coeffMax, (e[x, y] + 64) >> 7);
 
             for (int y = 0; y < nTbS; y++)
             {
-                if (trType == 1)
-                    for (int i = 0; i < nTbS; i++)
-                        for (int j = 0; j < nTbS; j++)
-                            r[i, y] += transMatrix4x4[j, i] * g[j, y];
-                else
-                    for (int i = 0; i < nTbS; i++)
-                        for (int j = 0; j < nTbS; j++)
-                            r[i, y] += transMatrix32x32[j * mult, i] * g[j, y];
+                for (int j = 0; j < nTbS; j++)
+                {
+                    input[j] = g[j, y];
+                }
+                InverseTransform.Apply(input, output, nTbS, matrix, trType == 1);
+                for (int i = 0; i < nTbS; i++)
+                {
+                    r[i, y] = output[i];
+                }
             }
 
             return r;
