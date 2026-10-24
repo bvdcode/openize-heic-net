@@ -97,9 +97,9 @@ namespace Openize.Heic.Decoder
             bool transformSkip = context.transform_skip_flag[cIdx];
             bool persistentRiceAdaptation = sps.sps_range_ext.persistent_rice_adaptation_enabled_flag;
             bool signDataHiding = pps.sign_data_hiding_enabled_flag;
-            int coefficientBaseX = cIdx == 0 ? x0 : x0 / sps.SubWidthC;
-            int coefficientBaseY = cIdx == 0 ? y0 : y0 / sps.SubHeightC;
-            int[,] coefficients = picture.TransCoeffLevel[cIdx];
+            int transformSize = 1 << log2TrafoSize;
+            int[] coefficients = picture.Workspace.Coefficients;
+            Array.Clear(coefficients, 0, transformSize * transformSize);
             int xS, yS, xC, yC;
 
             int lastSubblock_greater1Ctx = 0;
@@ -306,7 +306,7 @@ namespace Openize.Heic.Decoder
                                 TransCoeffLevel = -1 * TransCoeffLevel;
                         }
 
-                        coefficients[coefficientBaseX + xC, coefficientBaseY + yC] = TransCoeffLevel;
+                        coefficients[xC * transformSize + yC] = TransCoeffLevel;
 
                         numSigCoeff++;
                     }

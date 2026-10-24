@@ -32,7 +32,6 @@ namespace Openize.Heic.Decoder
         internal readonly int[,] SliceHeaderIndex;
         internal readonly IntraPredMode[,] IntraPredModeY;
         internal readonly IntraPredMode[,] IntraPredModeC;
-        internal readonly int[][,] TransCoeffLevel;
         internal readonly int[,] CtDepth;
         internal readonly PredMode[,] CuPredMode;
         internal readonly int[,] QpY;
@@ -68,7 +67,6 @@ namespace Openize.Heic.Decoder
             sao_offset_abs = new int[chroma_count][,][];
             sao_offset_sign = new int[chroma_count][,][];
             sao_band_position = new int[chroma_count][,];
-            TransCoeffLevel = new int[chroma_count][,];
 
             for (int i = 0; i < chroma_count; i++)
             {
@@ -79,8 +77,6 @@ namespace Openize.Heic.Decoder
                 sao_offset_abs[i] = new int[sps.PicWidthInCtbsY, sps.PicHeightInCtbsY][];
                 sao_offset_sign[i] = new int[sps.PicWidthInCtbsY, sps.PicHeightInCtbsY][];
                 sao_band_position[i] = new int[sps.PicWidthInCtbsY, sps.PicHeightInCtbsY];
-
-                TransCoeffLevel[i] = new int[widthMax, heightMax];
             }
 
             CtDepth = new int[widthMax, heightMax];
@@ -145,10 +141,6 @@ namespace Openize.Heic.Decoder
                 Array.Clear(plane, 0, plane.Length);
             }
             foreach (Array plane in sao_band_position)
-            {
-                Array.Clear(plane, 0, plane.Length);
-            }
-            foreach (Array plane in TransCoeffLevel)
             {
                 Array.Clear(plane, 0, plane.Length);
             }

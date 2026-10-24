@@ -46,7 +46,6 @@ namespace Openize.Heic.Decoder
         public IntraPredMode[,] IntraPredModeY;
         public IntraPredMode[,] IntraPredModeC;
 
-        public int[][,] TransCoeffLevel;
 
         public int[,] CtDepth;
         public PredMode[,] CuPredMode;
@@ -109,7 +108,6 @@ namespace Openize.Heic.Decoder
             SliceHeaderIndex = buffers.SliceHeaderIndex;
             IntraPredModeY = buffers.IntraPredModeY;
             IntraPredModeC = buffers.IntraPredModeC;
-            TransCoeffLevel = buffers.TransCoeffLevel;
             CtDepth = buffers.CtDepth;
             CuPredMode = buffers.CuPredMode;
             QpY = buffers.QpY;
@@ -173,7 +171,6 @@ namespace Openize.Heic.Decoder
             SliceHeaderIndex = null;
             IntraPredModeY = null;
             IntraPredModeC = null;
-            TransCoeffLevel = null;
             CtDepth = null;
             CuPredMode = null;
             QpY = null;

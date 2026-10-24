@@ -577,13 +577,13 @@ namespace Openize.Heic.Decoder
                 {
                     for (int x = 0; x < nTbS; x++)
                         for (int y = 0; y < nTbS; y++)
-                            rotateSamples[x, y] = picture.TransCoeffLevel[cIdx][xTbY + nTbS - x - 1, yTbY + nTbS - y - 1];
+                            rotateSamples[x, y] = picture.Workspace.Coefficients[(nTbS - x - 1) * nTbS + nTbS - y - 1];
                 }
                 else
                 {
                     for (int x = 0; x < nTbS; x++)
                         for (int y = 0; y < nTbS; y++)
-                            rotateSamples[x, y] = picture.TransCoeffLevel[cIdx][xTbY + x, yTbY + y];
+                            rotateSamples[x, y] = picture.Workspace.Coefficients[x * nTbS + y];
                 }
             }
             else
@@ -661,7 +661,7 @@ namespace Openize.Heic.Decoder
             {
                 for (int y = 0; y < nTbS; y++)
                 {
-                    coeff = picture.TransCoeffLevel[cIdx][xTbY + x, yTbY + y];
+                    coeff = picture.Workspace.Coefficients[x * nTbS + y];
 
                     if (!picture.sps.scaling_list_enabled_flag ||
                         (stream.Context.transform_skip_flag[cIdx] && nTbS > 4))
