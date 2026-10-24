@@ -134,20 +134,32 @@ namespace Openize.Heic.Decoder
             uint widthMax = sps.PicWidthInCtbsY << sps.CtbLog2SizeY;
             uint heightMax = sps.PicHeightInCtbsY << sps.CtbLog2SizeY;
             int chroma_count = sps.ChromaArrayType != 0 ? 3 : 1;
-            if (sps.BitDepthY > 8 || sps.BitDepthC > 8)
+            bool highColorRange = sps.BitDepthY > 8 || sps.BitDepthC > 8;
+            if (highColorRange)
             {
                 pixels_high_color_range = new ushort[chroma_count][,];
-                for (int i = 0; i < chroma_count; i++)
-                {
-                    pixels_high_color_range[i] = new ushort[widthMax, heightMax];
-                }
             }
             else
             {
                 pixels = new byte[chroma_count][,];
-                for (int i = 0; i < chroma_count; i++)
+            }
+            for (int component = 0; component < chroma_count; component++)
+            {
+                uint componentWidth = widthMax;
+                uint componentHeight = heightMax;
+                if (component > 0)
                 {
-                    pixels[i] = new byte[widthMax, heightMax];
+                    componentWidth /= sps.SubWidthC;
+                    componentHeight /= sps.SubHeightC;
+                }
+
+                if (highColorRange)
+                {
+                    pixels_high_color_range[component] = new ushort[componentWidth, componentHeight];
+                }
+                else
+                {
+                    pixels[component] = new byte[componentWidth, componentHeight];
                 }
             }
         }
