@@ -6,6 +6,7 @@ Heic image class.
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
+**MaximumDecodingThreads** | **int** | Maximum number of grid tiles decoded concurrently. |
 **Header** | **HeicHeader** | Heic image header. Grants convinient access to IsoBmff container meta data. | 
 **Frames** | **Dictionary<uint, HeicImageFrame>** | Dictionary of public Heic image frames with access by identifier. | 
 **AllFrames** | **Dictionary<uint, HeicImageFrame>** | Dictionary of all Heic image frames with access by identifier. | 
@@ -13,11 +14,14 @@ Name | Type | Description | Notes
 **Width** | **uint** | Width of the default image frame in pixels. | 
 **Height** | **uint** | Height of the default image frame in pixels. | 
 
+`Load(stream)` uses `Environment.ProcessorCount` as the concurrency limit. Pass a positive `maximumDecodingThreads` value to the overload to set the limit; `1` selects sequential grid decoding. Higher limits can increase peak memory usage.
+
 ## Methods
 
 Name | Type | Description | Parameters | Notes
 ------------ | ------------- | ------------- | ------------- | -------------
 **Load** | **HeicImage** | Reads the file meta data and creates a class object for further decoding of the file contents. | Stream <b>stream</b> - File stream. | This operation does not decode pixels.<br />Use the default frame methods GetByteArray or GetInt32Array afterwards in order to decode pixels.
+**Load** | **HeicImage** | Loads metadata and sets grid decoding concurrency. | `Stream stream` - Source stream.<br />`int maximumDecodingThreads` - Positive limit; use one for sequential decoding. | The stream must remain open while decoding.
 **CanLoad** | **bool** | Checks if the image header contains heic signarure.<br />Returns true if file header contains heic signarure, false otherwise | Stream <b>stream</b> - File stream. | 
 **GetByteArray** | **byte[]** | Get pixel data of the default image frame in the format of byte array.<br />Each three or four bytes (the count depends on the pixel format) refer to one pixel left to right top to bottom line by line.<br />Returns null if frame does not contain image data. | PixelFormat <b>pixelFormat</b> - Pixel format that defines the order of colors and the presence of alpha byte.<br />Rectangle <b>boundsRectangle</b> - Bounds of the requested area.
 **GetInt32Array** | **int[]** | Get pixel data of the default image frame in the format of integer array.<br />Each int value refers to one pixel left to right top to bottom line by line.<br />Returns null if frame does not contain image data. | PixelFormat <b>pixelFormat</b> - Pixel format that defines the order of colors.<br />Rectangle <b>boundsRectangle</b> - Bounds of the requested area.

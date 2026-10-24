@@ -115,8 +115,6 @@ namespace Openize.Heic.Decoder.IO
             }
 
             ContextDictionary.Remove(imageId);
-
-            GC.Collect();
         }
 
         /// <summary>

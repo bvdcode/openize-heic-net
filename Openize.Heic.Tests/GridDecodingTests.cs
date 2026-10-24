@@ -32,6 +32,24 @@ namespace Openize.Heic.Tests
 
             Assert.That(actual.AsSpan().SequenceEqual(expected), Is.True);
             Assert.That(repeated.AsSpan().SequenceEqual(expected), Is.True);
+            Assert.That(parallelStream.CanRead, Is.True);
+        }
+
+        [Test]
+        public async Task SharedGridCanBeDecodedConcurrently()
+        {
+            using FileStream stream = File.OpenRead(Path.Combine(SamplesPath, "nokia/grid_960x640.heic"));
+            HeicImage image = HeicImage.Load(stream, 2);
+            Task<byte[]> first = Task.Run(() => image.GetByteArray(PixelFormat.Rgba32));
+            Task<byte[]> second = Task.Run(() => image.GetByteArray(PixelFormat.Rgba32));
+            byte[][] results = await Task.WhenAll(first, second);
+
+            using FileStream referenceStream = File.OpenRead(Path.Combine(SamplesPath, "nokia/grid_960x640.heic"));
+            byte[] expected = HeicImage.Load(referenceStream, 1).GetByteArray(PixelFormat.Rgba32);
+            foreach (byte[] actual in results)
+            {
+                Assert.That(actual.AsSpan().SequenceEqual(expected), Is.True);
+            }
         }
 
         [TestCase(0)]

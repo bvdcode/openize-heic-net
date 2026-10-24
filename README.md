@@ -34,6 +34,24 @@ using (var fs = new FileStream("filename.heic", FileMode.Open))
 }
 ```
 
+### Limit parallel grid decoding
+
+```C#
+using Openize.Heic.Decoder;
+using System.IO;
+
+using (FileStream stream = File.OpenRead("image.heic"))
+{
+    HeicImage image = HeicImage.Load(stream, maximumDecodingThreads: 4);
+    byte[] pixels = image.GetByteArray(PixelFormat.Rgba32);
+}
+```
+
+`Load(stream)` uses `Environment.ProcessorCount` as the maximum number of concurrent grid tiles.
+Pass `1` to decode tiles sequentially. The source stream must remain open until decoding finishes.
+Tiles are decoded in bounded groups, with temporary decoding storage collected between groups.
+Higher concurrency can increase peak memory usage. This setting applies to grid tiles, not to blocks within a single coded frame.
+
 ### Convert .heic file to .jpg using System.Windows.Media.Imaging.WriteableBitmap
 ```C#
 using (var fs = new FileStream("filename.heic", FileMode.Open))
@@ -143,6 +161,7 @@ All public classes, methods and properties are documented in corresponding API_R
 Name | Type | Description | Parameters | Notes
 ------------ | ------------- | ------------- | ------------- | -------------
 **Load** | **HeicImage** | Reads the file meta data and creates a class object for further decoding of the file contents. | `Stream stream` - File stream. | This operation does not decode pixels.<br />Use the default frame methods GetByteArray or GetInt32Array afterwards in order to decode pixels.
+**Load** | **HeicImage** | Loads metadata and sets grid decoding concurrency. | `Stream stream` - Source stream.<br />`int maximumDecodingThreads` - Positive limit; use one for sequential decoding. | The stream must remain open while decoding.
 **CanLoad** | **bool** | Checks if the image header contains heic signarure.<br />Returns true if file header contains heic signarure, false otherwise | `Stream stream` - File stream. | 
 **GetByteArray** | **byte[]** | Get pixel data of the default image frame in the format of byte array.<br />Each three or four bytes (the count depends on the pixel format) refer to one pixel left to right top to bottom line by line.<br />Returns null if frame does not contain image data. | `PixelFormat pixelFormat` - Pixel format that defines the order of colors and the presence of alpha byte.<br />`Rectangle boundsRectangle` - Bounds of the requested area.
 **GetInt32Array** | **int[]** | Get pixel data of the default image frame in the format of integer array.<br />Each int value refers to one pixel left to right top to bottom line by line.<br />Returns null if frame does not contain image data. | `PixelFormat pixelFormat` - Pixel format that defines the order of colors.<br />`Rectangle boundsRectangle` - Bounds of the requested area.
@@ -150,6 +169,7 @@ Name | Type | Description | Parameters | Notes
 #### Properties
 Name | Type | Description
 ------------ | ------------- | ------------- 
+**MaximumDecodingThreads** | **int** | Maximum number of grid tiles decoded concurrently.
 **Header** | **HeicHeader** | Heic image header. Grants convinient access to IsoBmff container meta data.
 **Frames** | **Dictionary<uint, HeicImageFrame>** | Dictionary of public Heic image frames with access by identifier. 
 **AllFrames** | **Dictionary<uint, HeicImageFrame>** | Dictionary of all Heic image frames with access by identifier. 

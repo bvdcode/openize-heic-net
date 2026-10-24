@@ -661,20 +661,23 @@ namespace Openize.Heic.Decoder
                 }
             };
 
-            if (parent.MaximumDecodingThreads == 1 || tileCount == 1)
+            int batchSize = Math.Min(parent.MaximumDecodingThreads, tileCount);
+            ParallelOptions options = new ParallelOptions
             {
-                for (int index = 0; index < tileCount; index++)
+                MaxDegreeOfParallelism = batchSize
+            };
+            for (int first = 0; first < tileCount; first += batchSize)
+            {
+                int end = Math.Min(first + batchSize, tileCount);
+                if (batchSize == 1)
                 {
-                    decodeTile(index);
+                    decodeTile(first);
                 }
-            }
-            else
-            {
-                ParallelOptions options = new ParallelOptions
+                else
                 {
-                    MaxDegreeOfParallelism = parent.MaximumDecodingThreads
-                };
-                Parallel.For(0, tileCount, options, decodeTile);
+                    Parallel.For(first, end, options, decodeTile);
+                }
+                GC.Collect();
             }
             return output;
         }
