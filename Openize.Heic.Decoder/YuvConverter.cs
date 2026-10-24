@@ -50,15 +50,16 @@ namespace Openize.Heic.Decoder
         /// Convert YUV byte array to RGBA.
         /// </summary>
         /// <returns>RGBA byte array.</returns>
-        public byte[,,] GetRgbaByteArray()
+        public RgbaImage GetRgbaImage()
         {
             uint width = picture.hvcConfig.SPS.pic_width_in_luma_samples;
             uint height = picture.hvcConfig.SPS.pic_height_in_luma_samples;
 
-            byte[,,] pixels = new byte[width, height, 4];
+            RgbaImage image = new RgbaImage((int)width, (int)height);
+            byte[] pixels = image.Pixels;
 
             if (picture.rawPixels == null && picture.rawPixelsHighColorRange == null)
-                return pixels;
+                return image;
 
             double Y, Cr, Cb, R, G, B;
 
@@ -112,14 +113,15 @@ namespace Openize.Heic.Decoder
                         (R, G, B) = YCrCb2RGB(Y * BitKoefY, Cb * BitKoefC, Cr * BitKoefC);
                     }
 
-                    pixels[col, row, 0] = (byte)MathExtra.Clip3(0, 255, (int)R);
-                    pixels[col, row, 1] = (byte)MathExtra.Clip3(0, 255, (int)G);
-                    pixels[col, row, 2] = (byte)MathExtra.Clip3(0, 255, (int)B);
-                    pixels[col, row, 3] = 255;
+                    int index = row * image.Stride + col * RgbaImage.BytesPerPixel;
+                    pixels[index] = (byte)MathExtra.Clip3(0, 255, (int)R);
+                    pixels[index + 1] = (byte)MathExtra.Clip3(0, 255, (int)G);
+                    pixels[index + 2] = (byte)MathExtra.Clip3(0, 255, (int)B);
+                    pixels[index + 3] = 255;
                 }
             }
 
-            return pixels;
+            return image;
         }
 
         /// <summary>

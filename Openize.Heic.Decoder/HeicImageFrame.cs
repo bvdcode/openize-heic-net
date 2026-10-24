@@ -217,25 +217,8 @@ namespace Openize.Heic.Decoder
 
             boundsRectangle = ValidateBounds(boundsRectangle);
 
-            byte[,,] threeDim = GetMultidimArray(boundsRectangle);
-            threeDim = ApplyPixelFormat(threeDim, pixelFormat);
-
-            int bpp = pixelFormat == PixelFormat.Rgb24 ? 3 : 4;
-            byte[] output = new byte[boundsRectangle.Height * boundsRectangle.Width * bpp];
-
-            int index = 0;
-            for (int row = boundsRectangle.Top; row < boundsRectangle.Bottom; row++)
-            {
-                for (int col = boundsRectangle.Left; col < boundsRectangle.Right; col++)
-                {
-                    output[index++] = threeDim[col, row, 0];
-                    output[index++] = threeDim[col, row, 1];
-                    output[index++] = threeDim[col, row, 2];
-                    if (bpp == 4) output[index++] = threeDim[col, row, 3];
-                }
-            }
-
-            return output;
+            RgbaImage pixels = GetRgbaImage(boundsRectangle);
+            return pixels.GetByteArray(pixelFormat, boundsRectangle);
         }
 
         /// <summary>
@@ -252,25 +235,8 @@ namespace Openize.Heic.Decoder
 
             boundsRectangle = ValidateBounds(boundsRectangle);
 
-            byte[,,] threeDim = GetMultidimArray(boundsRectangle);
-            threeDim = ApplyPixelFormat(threeDim, pixelFormat);
-
-            int[] output = new int[boundsRectangle.Height * boundsRectangle.Width];
-
-            int index = 0;
-            for (int row = boundsRectangle.Top; row < boundsRectangle.Bottom; row++)
-            {
-                for (int col = boundsRectangle.Left; col < boundsRectangle.Right; col++)
-                {
-                    output[index++] =
-                        threeDim[col, row, 0] << 24 |
-                        threeDim[col, row, 1] << 16 |
-                        threeDim[col, row, 2] << 8 |
-                        threeDim[col, row, 3] << 0;
-                }
-            }
-
-            return output;
+            RgbaImage pixels = GetRgbaImage(boundsRectangle);
+            return pixels.GetInt32Array(pixelFormat, boundsRectangle);
         }
 
         /// <summary>
@@ -429,9 +395,9 @@ namespace Openize.Heic.Decoder
 
         #region Private Methods
 
-        private byte[,,] GetMultidimArray(Rectangle boundsRectangle, TileDecoderWorkspace workspace = null)
+        private RgbaImage GetRgbaImage(Rectangle boundsRectangle, TileDecoderWorkspace workspace = null)
         {
-            byte[,,] rgba = null;
+            RgbaImage rgba = null;
 
             byte[] databox = locationBox.construction_method == 1 ?
                 parent.Header.GetItemDataBoxContent(
@@ -445,12 +411,12 @@ namespace Openize.Heic.Decoder
                     LoadHvcRawPixels(workspace);
 
                     var converter = new YuvConverter(this);
-                    rgba = converter.GetRgbaByteArray();
+                    rgba = converter.GetRgbaImage();
                     break;
                 case ImageFrameType.iden:
                     var derived = parent.Header.GetDerivedList(id);
                     HeicImageFrame frame = parent.AllFrames[derived[0]];
-                    rgba = frame.GetMultidimArray(new Rectangle(0, 0, (int)frame.Width, (int)frame.Height), workspace);
+                    rgba = frame.GetRgbaImage(new Rectangle(0, 0, (int)frame.Width, (int)frame.Height), workspace);
                     break;
                 case ImageFrameType.iovl:
                     rgba = GetByteArrayForOverlay(databox, workspace);
@@ -485,29 +451,33 @@ namespace Openize.Heic.Decoder
             return boundsRectangle;
         }
 
-        private byte[,,] AddAlphaLayer(byte[,,] pixels, Rectangle boundsRectangle, TileDecoderWorkspace workspace)
+        private RgbaImage AddAlphaLayer(RgbaImage pixels, Rectangle boundsRectangle, TileDecoderWorkspace workspace)
         {
             if (alphaReference == null)
                 return pixels;
 
-            var alpha = parent.AllFrames[alphaReference ?? 0].GetMultidimArray(boundsRectangle, workspace);
+            var alpha = parent.AllFrames[alphaReference ?? 0].GetRgbaImage(boundsRectangle, workspace);
 
-            for (uint row = 0; row < Height; row++)
+            for (int row = 0; row < (int)Height; row++)
             {
-                for (uint col = 0; col < Width; col++)
+                int target = row * pixels.Stride + 3;
+                int source = row * alpha.Stride;
+                for (int column = 0; column < (int)Width; column++)
                 {
-                    pixels[col, row, 3] = alpha[col, row, 0];
+                    pixels.Pixels[target] = alpha.Pixels[source];
+                    target += RgbaImage.BytesPerPixel;
+                    source += RgbaImage.BytesPerPixel;
                 }
             }
             return pixels;
         }
 
-        private byte[,,] TransformImage(byte[,,] pixels)
+        private RgbaImage TransformImage(RgbaImage pixels)
         {
             if (imageRotationAngle == 0 && imageMirrorAxis == 0)
                 return pixels;
 
-            byte[,,] rotated = new byte[Width, Height, 4];
+            RgbaImage rotated = new RgbaImage((int)Width, (int)Height);
 
             uint oldCol, oldRow;
 
@@ -551,48 +521,16 @@ namespace Openize.Heic.Decoder
                             oldRow = Width - oldRow - 1;
                     }
 
-                    for (int i = 0; i < 4; i++)
-                        rotated[newCol, newRow, i] = pixels[oldCol, oldRow, i];
+                    int source = (int)oldRow * pixels.Stride + (int)oldCol * RgbaImage.BytesPerPixel;
+                    int target = (int)newRow * rotated.Stride + (int)newCol * RgbaImage.BytesPerPixel;
+                    rotated.Pixels[target] = pixels.Pixels[source];
+                    rotated.Pixels[target + 1] = pixels.Pixels[source + 1];
+                    rotated.Pixels[target + 2] = pixels.Pixels[source + 2];
+                    rotated.Pixels[target + 3] = pixels.Pixels[source + 3];
                 }
             }
 
             return rotated;
-        }
-
-        private byte[,,] ApplyPixelFormat(byte[,,] rgba, PixelFormat pixelFormat)
-        {
-            if (pixelFormat == PixelFormat.Rgba32 || pixelFormat == PixelFormat.Rgb24)
-                return rgba;
-
-            byte r, g, b, a;
-
-            for (uint row = 0; row < Height; row++)
-            {
-                for (uint col = 0; col < Width; col++)
-                {
-                    r = rgba[col, row, 0];
-                    g = rgba[col, row, 1];
-                    b = rgba[col, row, 2];
-                    a = rgba[col, row, 3];
-
-                    switch (pixelFormat)
-                    {
-                        case PixelFormat.Argb32:
-                            rgba[col, row, 0] = a;
-                            rgba[col, row, 1] = r;
-                            rgba[col, row, 2] = g;
-                            rgba[col, row, 3] = b;
-                            break;
-                        case PixelFormat.Bgra32:
-                            rgba[col, row, 0] = b;
-                            rgba[col, row, 1] = g;
-                            rgba[col, row, 2] = r;
-                            rgba[col, row, 3] = a;
-                            break;
-                    }
-                }
-            }
-            return rgba;
         }
 
         private void LoadHvcRawPixels(TileDecoderWorkspace workspace)
@@ -627,7 +565,7 @@ namespace Openize.Heic.Decoder
             }
         }
 
-        private byte[,,] GetByteArrayForGrid(byte[] databox, TileDecoderWorkspace workspace)
+        private RgbaImage GetByteArrayForGrid(byte[] databox, TileDecoderWorkspace workspace)
         {
             int gridFieldLength = ((databox[1] & 1) + 1) * 2;
 
@@ -638,7 +576,7 @@ namespace Openize.Heic.Decoder
             var localHeight = (uint)GetByteFromIdatField(databox, 4 + gridFieldLength, gridFieldLength);
 
             uint[] derived = parent.Header.GetDerivedList(id);
-            byte[,,] output = new byte[localWidth, localHeight, 4];
+            RgbaImage output = new RgbaImage((int)localWidth, (int)localHeight);
             int tileCount = (rows + 1) * (columns + 1);
 
             Action<int, TileDecoderWorkspace> decodeTile = (index, tileWorkspace) =>
@@ -646,21 +584,10 @@ namespace Openize.Heic.Decoder
                 int row = index / (columns + 1);
                 int column = index % (columns + 1);
                 HeicImageFrame frame = parent.AllFrames[derived[index]];
-                byte[,,] framePixels = frame.GetMultidimArray(new Rectangle(0, 0, (int)frame.Width, (int)frame.Height), tileWorkspace);
+                RgbaImage framePixels = frame.GetRgbaImage(new Rectangle(0, 0, (int)frame.Width, (int)frame.Height), tileWorkspace);
 
-                for (int x = 0; x < frame.Width; x++)
-                {
-                    for (int y = 0; y < frame.Height; y++)
-                    {
-                        if (column * frame.Width + x < localWidth && row * frame.Height + y < localHeight)
-                        {
-                            output[column * frame.Width + x, row * frame.Height + y, 0] = framePixels[x, y, 0];
-                            output[column * frame.Width + x, row * frame.Height + y, 1] = framePixels[x, y, 1];
-                            output[column * frame.Width + x, row * frame.Height + y, 2] = framePixels[x, y, 2];
-                            output[column * frame.Width + x, row * frame.Height + y, 3] = framePixels[x, y, 3];
-                        }
-                    }
-                }
+                framePixels.CopyTo(output, new Rectangle(checked(column * (int)frame.Width),
+                    checked(row * (int)frame.Height), (int)frame.Width, (int)frame.Height));
             };
 
             if (workspace is null)
@@ -699,7 +626,7 @@ namespace Openize.Heic.Decoder
             return output;
         }
 
-        private byte[,,] GetByteArrayForOverlay(byte[] databox, TileDecoderWorkspace workspace)
+        private RgbaImage GetByteArrayForOverlay(byte[] databox, TileDecoderWorkspace workspace)
         {
             var derived = parent.Header.GetDerivedList(id);
 
@@ -728,35 +655,21 @@ namespace Openize.Heic.Decoder
             }
 
             HeicImageFrame frame;
-            byte[,,] framePixels;
-            byte[,,] output = new byte[outputWidth, outputHeight, 4];
+            RgbaImage framePixels;
+            RgbaImage output = new RgbaImage((int)outputWidth, (int)outputHeight);
 
-            for (uint row = 0; row < Height; row++)
+            for (int pixel = 3; pixel < output.Pixels.Length; pixel += RgbaImage.BytesPerPixel)
             {
-                for (uint col = 0; col < Width; col++)
-                {
-                    output[col, row, 3] = 255;
-                }
+                output.Pixels[pixel] = 255;
             }
 
             for (int i = 0; i < derived.Length; i++)
             {
                 frame = parent.AllFrames[derived[i]];
-                framePixels = frame.GetMultidimArray(new Rectangle(0, 0, (int)frame.Width, (int)frame.Height), workspace);
+                framePixels = frame.GetRgbaImage(new Rectangle(0, 0, (int)frame.Width, (int)frame.Height), workspace);
 
-                for (int k = 0; k < frame.Height; k++)
-                {
-                    for (int l = 0; l < frame.Width; l++)
-                    {
-                        if (horizontal_offset[i] + l < outputWidth && vertical_offset[i] + k < outputHeight)
-                        {
-                            output[horizontal_offset[i] + l, vertical_offset[i] + k, 0] = framePixels[l, k, 0];
-                            output[horizontal_offset[i] + l, vertical_offset[i] + k, 1] = framePixels[l, k, 1];
-                            output[horizontal_offset[i] + l, vertical_offset[i] + k, 2] = framePixels[l, k, 2];
-                            output[horizontal_offset[i] + l, vertical_offset[i] + k, 3] = framePixels[l, k, 3];
-                        }
-                    }
-                }
+                framePixels.CopyTo(output, new Rectangle(horizontal_offset[i], vertical_offset[i],
+                    (int)frame.Width, (int)frame.Height));
             }
             return output;
         }

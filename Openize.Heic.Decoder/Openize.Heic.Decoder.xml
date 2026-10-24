@@ -1301,7 +1301,7 @@
             Coded image.
             </summary>
         </member>
-        <member name="M:Openize.Heic.Decoder.YuvConverter.GetRgbaByteArray">
+        <member name="M:Openize.Heic.Decoder.YuvConverter.GetRgbaImage">
             <summary>
             Convert YUV byte array to RGBA.
             </summary>
