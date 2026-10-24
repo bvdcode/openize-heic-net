@@ -42,7 +42,7 @@ namespace Openize.Heic.Decoder
         public int[][,] sao_band_position;
 
         public uint[,] SliceAddrRs;
-        public int[,] SliceHeaderIndex;
+        public PointMap<int> SliceHeaderIndex;
         public BlockMap<IntraPredMode> IntraPredModeY;
         public BlockMap<IntraPredMode> IntraPredModeC;
 
@@ -53,15 +53,15 @@ namespace Openize.Heic.Decoder
         public BlockMap<int> Log2CbSize;
         public bool[,] merge_flag;
 
-        public bool[,] cu_skip_flag;
-        public bool[,] palette_mode_flag;
-        public bool[,] pcm_flag;
-        public bool[,] prev_intra_luma_pred_flag;
-        public int[,] mpm_idx;
-        public IntraPredMode[,] rem_intra_luma_pred_mode;
-        public byte[,] intra_chroma_pred_mode;
+        public PointMap<bool> cu_skip_flag;
+        public PointMap<bool> palette_mode_flag;
+        public BlockMap<bool> pcm_flag;
+        public PointMap<bool> prev_intra_luma_pred_flag;
+        public PointMap<int> mpm_idx;
+        public PointMap<IntraPredMode> rem_intra_luma_pred_mode;
+        public PointMap<byte> intra_chroma_pred_mode;
 
-        public bool[,] tu_residual_act_flag;
+        public PointMap<bool> tu_residual_act_flag;
 
         //public bool[,][] split_transform_flag;
         public CodedBlockFlags cbf_cb;
@@ -304,9 +304,7 @@ namespace Openize.Heic.Decoder
         }
         internal void SetPcmFlag(int x0, int y0, int nCbS, bool value)
         {
-            for (int i = x0; i < x0 + nCbS; i++)
-                for (int j = y0; j < y0 + nCbS; j++)
-                    pcm_flag[i, j] = value;
+            pcm_flag.Fill(x0, y0, nCbS, value);
         }
         internal void SetQpY(int x0, int y0, int log2CbSize, int qpY)
         {

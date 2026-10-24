@@ -29,7 +29,7 @@ namespace Openize.Heic.Decoder
         internal readonly int[][,][] sao_offset_sign;
         internal readonly int[][,] sao_band_position;
         internal readonly uint[,] SliceAddrRs;
-        internal readonly int[,] SliceHeaderIndex;
+        internal readonly PointMap<int> SliceHeaderIndex;
         internal readonly BlockMap<IntraPredMode> IntraPredModeY;
         internal readonly BlockMap<IntraPredMode> IntraPredModeC;
         internal readonly BlockMap<int> CtDepth;
@@ -37,14 +37,14 @@ namespace Openize.Heic.Decoder
         internal readonly BlockMap<int> QpY;
         internal readonly BlockMap<int> Log2CbSize;
         internal readonly bool[,] merge_flag;
-        internal readonly bool[,] cu_skip_flag;
-        internal readonly bool[,] palette_mode_flag;
-        internal readonly bool[,] pcm_flag;
-        internal readonly bool[,] prev_intra_luma_pred_flag;
-        internal readonly int[,] mpm_idx;
-        internal readonly IntraPredMode[,] rem_intra_luma_pred_mode;
-        internal readonly byte[,] intra_chroma_pred_mode;
-        internal readonly bool[,] tu_residual_act_flag;
+        internal readonly PointMap<bool> cu_skip_flag;
+        internal readonly PointMap<bool> palette_mode_flag;
+        internal readonly BlockMap<bool> pcm_flag;
+        internal readonly PointMap<bool> prev_intra_luma_pred_flag;
+        internal readonly PointMap<int> mpm_idx;
+        internal readonly PointMap<IntraPredMode> rem_intra_luma_pred_mode;
+        internal readonly PointMap<byte> intra_chroma_pred_mode;
+        internal readonly PointMap<bool> tu_residual_act_flag;
         internal readonly CodedBlockFlags cbf_cb;
         internal readonly CodedBlockFlags cbf_cr;
         internal readonly CodedBlockFlags cbf_luma;
@@ -87,23 +87,23 @@ namespace Openize.Heic.Decoder
             IntraPredModeC = new BlockMap<IntraPredMode>(widthMax, heightMax);
 
             merge_flag = new bool[widthMax, heightMax];
-            cu_skip_flag = new bool[widthMax, heightMax];
-            palette_mode_flag = new bool[widthMax, heightMax];
-            pcm_flag = new bool[widthMax, heightMax];
-            prev_intra_luma_pred_flag = new bool[widthMax, heightMax];
+            cu_skip_flag = new PointMap<bool>(widthMax, heightMax);
+            palette_mode_flag = new PointMap<bool>(widthMax, heightMax);
+            pcm_flag = new BlockMap<bool>(widthMax, heightMax);
+            prev_intra_luma_pred_flag = new PointMap<bool>(widthMax, heightMax);
 
-            mpm_idx = new int[widthMax, heightMax];
-            rem_intra_luma_pred_mode = new IntraPredMode[widthMax, heightMax];
-            intra_chroma_pred_mode = new byte[widthMax, heightMax];
+            mpm_idx = new PointMap<int>(widthMax, heightMax);
+            rem_intra_luma_pred_mode = new PointMap<IntraPredMode>(widthMax, heightMax);
+            intra_chroma_pred_mode = new PointMap<byte>(widthMax, heightMax);
 
-            tu_residual_act_flag = new bool[widthMax, heightMax];
+            tu_residual_act_flag = new PointMap<bool>(widthMax, heightMax);
 
             cbf_cb = new CodedBlockFlags(widthMax, heightMax);
             cbf_cr = new CodedBlockFlags(widthMax, heightMax);
             cbf_luma = new CodedBlockFlags(widthMax, heightMax);
 
             SliceAddrRs = new uint[sps.PicWidthInCtbsY, sps.PicHeightInCtbsY];
-            SliceHeaderIndex = new int[widthMax, heightMax];
+            SliceHeaderIndex = new PointMap<int>(widthMax, heightMax);
         }
 
         internal bool Matches(seq_parameter_set_rbsp sps)
@@ -145,7 +145,7 @@ namespace Openize.Heic.Decoder
                 Array.Clear(plane, 0, plane.Length);
             }
             Array.Clear(SliceAddrRs, 0, SliceAddrRs.Length);
-            Array.Clear(SliceHeaderIndex, 0, SliceHeaderIndex.Length);
+            SliceHeaderIndex.Clear();
             IntraPredModeY.Clear();
             IntraPredModeC.Clear();
             CtDepth.Clear();
@@ -153,14 +153,14 @@ namespace Openize.Heic.Decoder
             QpY.Clear();
             Log2CbSize.Clear();
             Array.Clear(merge_flag, 0, merge_flag.Length);
-            Array.Clear(cu_skip_flag, 0, cu_skip_flag.Length);
-            Array.Clear(palette_mode_flag, 0, palette_mode_flag.Length);
-            Array.Clear(pcm_flag, 0, pcm_flag.Length);
-            Array.Clear(prev_intra_luma_pred_flag, 0, prev_intra_luma_pred_flag.Length);
-            Array.Clear(mpm_idx, 0, mpm_idx.Length);
-            Array.Clear(rem_intra_luma_pred_mode, 0, rem_intra_luma_pred_mode.Length);
-            Array.Clear(intra_chroma_pred_mode, 0, intra_chroma_pred_mode.Length);
-            Array.Clear(tu_residual_act_flag, 0, tu_residual_act_flag.Length);
+            cu_skip_flag.Clear();
+            palette_mode_flag.Clear();
+            pcm_flag.Clear();
+            prev_intra_luma_pred_flag.Clear();
+            mpm_idx.Clear();
+            rem_intra_luma_pred_mode.Clear();
+            intra_chroma_pred_mode.Clear();
+            tu_residual_act_flag.Clear();
             cbf_cb.Clear();
             cbf_cr.Clear();
             cbf_luma.Clear();

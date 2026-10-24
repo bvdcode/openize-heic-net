@@ -67,6 +67,7 @@
     <Compile Include="Context\DecoderContext.cs" />
     <Compile Include="Context\BlockWorkspace.cs" />
     <Compile Include="Context\BlockMap.cs" />
+    <Compile Include="Context\PointMap.cs" />
     <Compile Include="Context\CodedBlockFlags.cs" />
     <Compile Include="Context\PictureWorkspace.cs" />
     <Compile Include="Context\TileDecoderWorkspace.cs" />
