@@ -17,7 +17,7 @@ namespace Openize.Heic.Decoder
     {
         private BitStreamWithNalSupport stream;
 
-        internal ContextVariable[][] contextTable = new ContextVariable[40][];
+        internal byte[][] contextTable = new byte[40][];
         internal byte[] StatCoeff = new byte[4];
         internal uint PredictorPaletteSize;
         internal ushort[,] PredictorPaletteEntries;
@@ -25,7 +25,7 @@ namespace Openize.Heic.Decoder
         internal int ivlOffset;
 
         // sync section
-        private ContextVariable[][] contextTableSync = new ContextVariable[40][];
+        private byte[][] contextTableSync = new byte[40][];
         internal byte[] tableStatCoeffSync = new byte[4];
 
         #region Construstor
@@ -66,17 +66,17 @@ namespace Openize.Heic.Decoder
         {
             //FL: cMax: 1
             //bin 1: 0
-            ContextVariable[] model = contextTable[(int)CabacType.sao_merge_flag];
-            return DecodeGeneralForBinaryDecision(model[0]) == 1;
+            byte[] model = contextTable[(int)CabacType.sao_merge_flag];
+            return DecodeGeneralForBinaryDecision(ref model[0]) == 1;
         }
 
         internal int read_sao_type_idx()
         {
             //TR: cMax: 2, cRiceParam: 0
             //bin 1: 0, bin 2: bypass
-            ContextVariable[] model = contextTable[(int)CabacType.sao_type_idx];
+            byte[] model = contextTable[(int)CabacType.sao_type_idx];
 
-            var bin0 = DecodeGeneralForBinaryDecision(model[0]);
+            var bin0 = DecodeGeneralForBinaryDecision(ref model[0]);
 
             if (bin0 == 0)
                 return 0;
@@ -132,8 +132,8 @@ namespace Openize.Heic.Decoder
             // FL: cMax: 1
             // bin 1: clause 9.3.4.2.2
             int index = GetContextIndexFromNeighborState(x0, y0, picture, cqtDepth);
-            ContextVariable[] model = contextTable[(int)CabacType.split_cu_flag];
-            return DecodeGeneralForBinaryDecision(model[index]) == 1;
+            byte[] model = contextTable[(int)CabacType.split_cu_flag];
+            return DecodeGeneralForBinaryDecision(ref model[index]) == 1;
         }
 
         #endregion
@@ -144,8 +144,8 @@ namespace Openize.Heic.Decoder
         {
             // FL: cMax: 1
             // bin 1: 0
-            ContextVariable[] model = contextTable[(int)CabacType.cu_transquant_bypass_flag];
-            return DecodeGeneralForBinaryDecision(model[0]) == 1;
+            byte[] model = contextTable[(int)CabacType.cu_transquant_bypass_flag];
+            return DecodeGeneralForBinaryDecision(ref model[0]) == 1;
         }
 
         internal bool read_cu_skip_flag(int x0, int y0, HeicPicture picture, int cqtDepth)
@@ -153,24 +153,24 @@ namespace Openize.Heic.Decoder
             // FL: cMax: 1
             // bin 1: clause 9.3.4.2.2
             int index = GetContextIndexFromNeighborState(x0, y0, picture, cqtDepth);
-            ContextVariable[] model = contextTable[(int)CabacType.split_cu_flag];
-            return DecodeGeneralForBinaryDecision(model[index]) == 1;
+            byte[] model = contextTable[(int)CabacType.split_cu_flag];
+            return DecodeGeneralForBinaryDecision(ref model[index]) == 1;
         }
 
         internal bool read_palette_mode_flag()
         {
             // FL: cMax: 1
             // bin 1: 0
-            ContextVariable[] model = contextTable[(int)CabacType.palette_mode_flag];
-            return DecodeGeneralForBinaryDecision(model[0]) == 1;
+            byte[] model = contextTable[(int)CabacType.palette_mode_flag];
+            return DecodeGeneralForBinaryDecision(ref model[0]) == 1;
         }
 
         internal bool read_pred_mode_flag()
         {
             // FL: cMax: 1
             // bin 1: 0
-            ContextVariable[] model = contextTable[(int)CabacType.pred_mode_flag];
-            return DecodeGeneralForBinaryDecision(model[0]) == 1;
+            byte[] model = contextTable[(int)CabacType.pred_mode_flag];
+            return DecodeGeneralForBinaryDecision(ref model[0]) == 1;
         }
 
         internal PartMode read_part_mode(HeicPicture picture, PredMode pred_mode, int cLog2CbSize)
@@ -182,28 +182,28 @@ namespace Openize.Heic.Decoder
             // bin 3: 3 (log2CbSize > MinCbLog2SizeY)
             // bin 4: bypass
 
-            ContextVariable[] model = contextTable[(int)CabacType.part_mode];
+            byte[] model = contextTable[(int)CabacType.part_mode];
 
             if (pred_mode == PredMode.MODE_INTRA) {
-                int bit = DecodeGeneralForBinaryDecision(model[0]);
+                int bit = DecodeGeneralForBinaryDecision(ref model[0]);
                 return bit == 1 ? PartMode.PART_2Nx2N : PartMode.PART_NxN;
             }
             else // MODE_INTER
             {
                 var sps = picture.sps;
 
-                int bit0 = DecodeGeneralForBinaryDecision(model[0]);
+                int bit0 = DecodeGeneralForBinaryDecision(ref model[0]);
                 if (bit0 == 1) 
                     return PartMode.PART_2Nx2N;
 
-                int bit1 = DecodeGeneralForBinaryDecision(model[1]);
+                int bit1 = DecodeGeneralForBinaryDecision(ref model[1]);
 
                 if (cLog2CbSize > sps.MinCbLog2SizeY)
                 {
                     if (!sps.amp_enabled_flag)
                         return bit1 == 1 ? PartMode.PART_2NxN : PartMode.PART_Nx2N;
 
-                    int bit2 = DecodeGeneralForBinaryDecision(model[3]);
+                    int bit2 = DecodeGeneralForBinaryDecision(ref model[3]);
 
                     if (bit2 == 1)
                         return bit1 == 1 ? PartMode.PART_2NxN : PartMode.PART_Nx2N;
@@ -222,7 +222,7 @@ namespace Openize.Heic.Decoder
                     if (cLog2CbSize == 3)
                         return PartMode.PART_Nx2N;
 
-                    int bit2 = DecodeGeneralForBinaryDecision(model[2]);
+                    int bit2 = DecodeGeneralForBinaryDecision(ref model[2]);
                     return bit2 == 1 ? PartMode.PART_Nx2N : PartMode.PART_NxN;
                 }
             }
@@ -241,8 +241,8 @@ namespace Openize.Heic.Decoder
         {
             // FL: cMax: 1
             // bin 1: 0
-            ContextVariable[] model = contextTable[(int)CabacType.prev_intra_luma_pred_flag];
-            return DecodeGeneralForBinaryDecision(model[0]) == 1;
+            byte[] model = contextTable[(int)CabacType.prev_intra_luma_pred_flag];
+            return DecodeGeneralForBinaryDecision(ref model[0]) == 1;
         }
 
         internal int read_mpm_idx()
@@ -269,9 +269,9 @@ namespace Openize.Heic.Decoder
             // 9.3.3.8
             // bin 1: 0
             // bin 2-3: bypass
-            ContextVariable[] model = contextTable[(int)CabacType.intra_chroma_pred_mode];
+            byte[] model = contextTable[(int)CabacType.intra_chroma_pred_mode];
 
-            var bin0 = DecodeGeneralForBinaryDecision(model[0]);
+            var bin0 = DecodeGeneralForBinaryDecision(ref model[0]);
 
             if (bin0 == 0)
                 return (byte)4;
@@ -283,8 +283,8 @@ namespace Openize.Heic.Decoder
         {
             // FL: cMax: 1
             // bin 1: 0
-            ContextVariable[] model = contextTable[(int)CabacType.rqt_root_cbf];
-            return DecodeGeneralForBinaryDecision(model[0]) == 1;
+            byte[] model = contextTable[(int)CabacType.rqt_root_cbf];
+            return DecodeGeneralForBinaryDecision(ref model[0]) == 1;
         }
 
         #endregion
@@ -302,24 +302,24 @@ namespace Openize.Heic.Decoder
             // FL: cMax: 1
             // bin 1: 5 − log2TrafoSize
             int index = 5 - log2TrafoSize;
-            ContextVariable[] model = contextTable[(int)CabacType.split_transform_flag];
-            return DecodeGeneralForBinaryDecision(model[index]) == 1;
+            byte[] model = contextTable[(int)CabacType.split_transform_flag];
+            return DecodeGeneralForBinaryDecision(ref model[index]) == 1;
         }
 
         internal bool read_cbf_luma(int trafoDepth)
         {
             // FL: cMax: 1
             // bin 1: trafoDepth == 0 ? 1 : 0
-            ContextVariable[] model = contextTable[(int)CabacType.cbf_luma];
-            return DecodeGeneralForBinaryDecision(model[trafoDepth == 0 ? 1 : 0]) == 1;
+            byte[] model = contextTable[(int)CabacType.cbf_luma];
+            return DecodeGeneralForBinaryDecision(ref model[trafoDepth == 0 ? 1 : 0]) == 1;
         }
 
         internal bool read_cbf_chroma(int trafoDepth)
         {
             // FL: cMax: 1
             // bin 1: trafoDepth
-            ContextVariable[] model = contextTable[(int)CabacType.cbf_chroma];
-            return DecodeGeneralForBinaryDecision(model[trafoDepth]) == 1;
+            byte[] model = contextTable[(int)CabacType.cbf_chroma];
+            return DecodeGeneralForBinaryDecision(ref model[trafoDepth]) == 1;
         }
 
         #endregion
@@ -336,8 +336,8 @@ namespace Openize.Heic.Decoder
         {
             // FL: cMax: 1
             // bin 1: 0
-            ContextVariable[] model = contextTable[(int)CabacType.tu_residual_act_flag];
-            return DecodeGeneralForBinaryDecision(model[0]) == 1;
+            byte[] model = contextTable[(int)CabacType.tu_residual_act_flag];
+            return DecodeGeneralForBinaryDecision(ref model[0]) == 1;
         }
 
         internal int read_cu_qp_delta_abs()
@@ -346,15 +346,15 @@ namespace Openize.Heic.Decoder
             // bin 1: 0
             // bin 2-5: 1
             // bin 5+: bypass
-            ContextVariable[] model = contextTable[(int)CabacType.cu_qp_delta_abs];
+            byte[] model = contextTable[(int)CabacType.cu_qp_delta_abs];
 
-            if (DecodeGeneralForBinaryDecision(model[0]) == 0)
+            if (DecodeGeneralForBinaryDecision(ref model[0]) == 0)
                 return 0;
 
             int value = 1;
             for (int i = 0; i < 4; i++) // TR; cMax = 5 and cRiceParam = 0
             {
-                if (DecodeGeneralForBinaryDecision(model[1]) == 0)
+                if (DecodeGeneralForBinaryDecision(ref model[1]) == 0)
                     return value;
                 else
                     value++;
@@ -374,23 +374,23 @@ namespace Openize.Heic.Decoder
         {
             // FL: cMax: 1
             // bin 1: 0
-            ContextVariable[] model = contextTable[(int)CabacType.cu_chroma_qp_offset_flag];
-            return DecodeGeneralForBinaryDecision(model[0]) == 1;
+            byte[] model = contextTable[(int)CabacType.cu_chroma_qp_offset_flag];
+            return DecodeGeneralForBinaryDecision(ref model[0]) == 1;
         }
 
         internal int read_cu_chroma_qp_offset_idx(int cMax)
         {
             // TR: cMax: chroma_qp_offset_list_len_minus1, cRiceParam = 0
             // bin 0-4: 0
-            ContextVariable[] model = contextTable[(int)CabacType.cu_chroma_qp_offset_idx];
+            byte[] model = contextTable[(int)CabacType.cu_chroma_qp_offset_idx];
 
             for (int i = 0; i < cMax; i++)
-                if (DecodeGeneralForBinaryDecision(model[0]) == 0)
+                if (DecodeGeneralForBinaryDecision(ref model[0]) == 0)
                     return i;
 
             return cMax;
             // may be incorrect as not covered with tests. Another realisation:
-            // return DecodeGeneralForBinaryDecision(model[0]);
+            // return DecodeGeneralForBinaryDecision(ref model[0]);
         }
 
         #endregion
@@ -401,12 +401,12 @@ namespace Openize.Heic.Decoder
         {
             // TR cMax = 4, cRiceParam = 0
             // bin n: 4 * c + n
-            ContextVariable[] model = contextTable[(int)CabacType.log2_res_scale_abs_plus1];
+            byte[] model = contextTable[(int)CabacType.log2_res_scale_abs_plus1];
             int value = 0;
 
             for (int n = 0; n < 4; n++)
             {
-                if (DecodeGeneralForBinaryDecision(model[4 * c + n]) == 0)
+                if (DecodeGeneralForBinaryDecision(ref model[4 * c + n]) == 0)
                     break;
 
                 value++;
@@ -419,8 +419,8 @@ namespace Openize.Heic.Decoder
         {
             // FL cMax = 1
             // bin 0: c
-            ContextVariable[] model = contextTable[(int)CabacType.res_scale_sign_flag];
-            return DecodeGeneralForBinaryDecision(model[c]) == 1;
+            byte[] model = contextTable[(int)CabacType.res_scale_sign_flag];
+            return DecodeGeneralForBinaryDecision(ref model[c]) == 1;
         }
 
         #endregion
@@ -432,8 +432,8 @@ namespace Openize.Heic.Decoder
             // FL cMax = 1
             // bin 0: 0
             int index = cIdx == 0 ? 0 : 1;
-            ContextVariable[] model = contextTable[(int)CabacType.transform_skip_flag];
-            return DecodeGeneralForBinaryDecision(model[index]) == 1;
+            byte[] model = contextTable[(int)CabacType.transform_skip_flag];
+            return DecodeGeneralForBinaryDecision(ref model[index]) == 1;
         }
 
         internal bool read_explicit_rdpcm_flag(int cIdx) 
@@ -441,8 +441,8 @@ namespace Openize.Heic.Decoder
             // FL cMax = 1
             // bin 0: 0
             int index = (cIdx == 0) ? 0 : 1;
-            ContextVariable[] model = contextTable[(int)CabacType.explicit_rdpcm_flag];
-            return DecodeGeneralForBinaryDecision(model[index]) == 1;
+            byte[] model = contextTable[(int)CabacType.explicit_rdpcm_flag];
+            return DecodeGeneralForBinaryDecision(ref model[index]) == 1;
         }
 
         internal bool read_explicit_rdpcm_dir_flag(int cIdx)
@@ -450,15 +450,15 @@ namespace Openize.Heic.Decoder
             // FL cMax = 1
             // bin 0: 0
             int index = (cIdx == 0) ? 0 : 1;
-            ContextVariable[] model = contextTable[(int)CabacType.explicit_rdpcm_dir_flag];
-            return DecodeGeneralForBinaryDecision(model[index]) == 1;
+            byte[] model = contextTable[(int)CabacType.explicit_rdpcm_dir_flag];
+            return DecodeGeneralForBinaryDecision(ref model[index]) == 1;
         }
 
         internal int read_last_sig_coeff_prefix(int log2TrafoSize, int cIdx, CabacType type)
         {
             // TR cMax = (log2TrafoSize << 1 ) − 1, cRiceParam = 0
             // 0..17 (clause 9.3.4.2.3)
-            ContextVariable[] model = contextTable[(int)type];
+            byte[] model = contextTable[(int)type];
             int cMax = (log2TrafoSize << 1) - 1;
 
             int ctxOffset, ctxShift;
@@ -480,7 +480,7 @@ namespace Openize.Heic.Decoder
             {
                 ctxInc = (binIdx >> ctxShift) + ctxOffset;
 
-                if (DecodeGeneralForBinaryDecision(model[ctxInc]) == 0)
+                if (DecodeGeneralForBinaryDecision(ref model[ctxInc]) == 0)
                     return binIdx;
             }
 
@@ -499,7 +499,7 @@ namespace Openize.Heic.Decoder
         {
             // FL cMax = 1
             // bin 0: 0..3 (clause 9.3.4.2.4)
-            ContextVariable[] model = contextTable[(int)CabacType.coded_sub_block_flag];
+            byte[] model = contextTable[(int)CabacType.coded_sub_block_flag];
             
             int csbfCtx = 0;
 
@@ -514,7 +514,7 @@ namespace Openize.Heic.Decoder
             if (cIdx != 0)
                 ctxInc += 2;
 
-            return DecodeGeneralForBinaryDecision(model[ctxInc]) == 1;
+            return DecodeGeneralForBinaryDecision(ref model[ctxInc]) == 1;
         }
 
         internal bool read_sig_coeff_flag(HeicPicture picture, 
@@ -591,8 +591,8 @@ namespace Openize.Heic.Decoder
 
             int ctxInc = sigCtx + (cIdx == 0 ? 0 : 27);
 
-            ContextVariable[] model = contextTable[(int)CabacType.sig_coeff_flag];
-            return DecodeGeneralForBinaryDecision(model[ctxInc]) == 1;
+            byte[] model = contextTable[(int)CabacType.sig_coeff_flag];
+            return DecodeGeneralForBinaryDecision(ref model[ctxInc]) == 1;
         }
 
         internal bool read_coeff_abs_level_greater1_flag(int cIdx, int i,
@@ -657,8 +657,8 @@ namespace Openize.Heic.Decoder
             if (cIdx > 0)
                 ctxIdxInc += 16;
 
-            ContextVariable[] model = contextTable[(int)CabacType.coeff_abs_level_greater1_flag];
-            bool value = DecodeGeneralForBinaryDecision(model[ctxIdxInc]) == 1;
+            byte[] model = contextTable[(int)CabacType.coeff_abs_level_greater1_flag];
+            bool value = DecodeGeneralForBinaryDecision(ref model[ctxIdxInc]) == 1;
 
             lastInvocation_greater1Ctx = greater1Ctx;
             lastInvocation_coeff_abs_level_greater1_flag = value;
@@ -670,9 +670,9 @@ namespace Openize.Heic.Decoder
         {
             // FL cMax = 1
             // bin 0: 0..5 (clause 9.3.4.2.7)
-            ContextVariable[] model = contextTable[(int)CabacType.coeff_abs_level_greater2_flag];
+            byte[] model = contextTable[(int)CabacType.coeff_abs_level_greater2_flag];
             int index = ctxSet + (cIdx > 0 ? 4 : 0);
-            return DecodeGeneralForBinaryDecision(model[index]) == 1;
+            return DecodeGeneralForBinaryDecision(ref model[index]) == 1;
         }
 
         internal int read_coeff_abs_level_remaining(int cRiceParam)
@@ -759,41 +759,33 @@ namespace Openize.Heic.Decoder
         }
 
         // 9.3.4.3.2 Arithmetic decoding process for a binary decision
-        // ContextVariable[] model = contextVariables[(int)cabacType];
-        int DecodeGeneralForBinaryDecision(ContextVariable model)
+        internal int DecodeGeneralForBinaryDecision(ref byte model)
         {
-            // Inputs to this process are the variables ctxTable, ctxIdx, ivlCurrRange and ivlOffset.
-            // Outputs of this process are the decoded value binVal and the updated variables ivlCurrRange and ivlOffset
-
+            int probability = model >> 1;
+            int mostProbable = model & 1;
             int qRangeIdx = (ivlCurrRange >> 6) & 3;
-            int ivlLpsRange = rangeTabLps[model.pStateIndex, qRangeIdx];
+            int ivlLpsRange = rangeTabLps[probability, qRangeIdx];
             ivlCurrRange -= ivlLpsRange;
 
-            bool binVal;
-
+            int bit;
             if (ivlOffset >= ivlCurrRange)
             {
-                // LPS
-                binVal = !model.valMps;
+                bit = mostProbable ^ 1;
                 ivlOffset -= ivlCurrRange;
                 ivlCurrRange = ivlLpsRange;
-
-                if (model.pStateIndex == 0)
-                    model.valMps = !model.valMps;
-
-                model.pStateIndex = transIdxLps[model.pStateIndex];
+                if (probability == 0)
+                {
+                    mostProbable ^= 1;
+                }
+                model = (byte)((transIdxLps[probability] << 1) | mostProbable);
             }
             else
             {
-                // MPS
-                binVal = model.valMps;
-
-                model.pStateIndex = transIdxMps[model.pStateIndex];
+                bit = mostProbable;
+                model = (byte)((transIdxMps[probability] << 1) | mostProbable);
             }
-
             Renormalization();
-
-            return binVal ? 1 : 0;
+            return bit;
         }
 
         // 9.3.4.3.3 Renormalization process in the arithmetic decoding engine
@@ -863,14 +855,7 @@ namespace Openize.Heic.Decoder
         {
             for (CabacType cabacType = 0; (int)cabacType < 40; cabacType++)
             {
-                contextTableSync[(int)cabacType] = new ContextVariable[contextTable[(int)cabacType].Length];
-
-                for (int i = 0; i < contextTable[(int)cabacType].Length; i++)
-                {
-                    contextTableSync[(int)cabacType][i] = new ContextVariable();
-                    contextTableSync[(int)cabacType][i].pStateIndex = contextTable[(int)cabacType][i].pStateIndex;
-                    contextTableSync[(int)cabacType][i].valMps = contextTable[(int)cabacType][i].valMps;
-                }
+                contextTableSync[(int)cabacType] = (byte[])contextTable[(int)cabacType].Clone();
             }
 
             for (int i = 0; i < 4; i++)
@@ -883,14 +868,7 @@ namespace Openize.Heic.Decoder
         {
             for (CabacType cabacType = 0; (int)cabacType < 40; cabacType++)
             {
-                contextTable[(int)cabacType] = new ContextVariable[contextTableSync[(int)cabacType].Length];
-
-                for (int i = 0; i < contextTableSync[(int)cabacType].Length; i++)
-                {
-                    contextTable[(int)cabacType][i] = new ContextVariable();
-                    contextTable[(int)cabacType][i].pStateIndex = contextTableSync[(int)cabacType][i].pStateIndex;
-                    contextTable[(int)cabacType][i].valMps = contextTableSync[(int)cabacType][i].valMps;
-                }
+                contextTable[(int)cabacType] = (byte[])contextTableSync[(int)cabacType].Clone();
             }
 
             for (int i = 0; i < 4; i++)
@@ -977,7 +955,7 @@ namespace Openize.Heic.Decoder
             for (CabacType cabacType = 0; (int)cabacType < 40; cabacType++)
             {
                 var init_value = Getinit_valueByType(cabacType, initType);
-                contextTable[(int)cabacType] = new ContextVariable[init_value.Length];
+                contextTable[(int)cabacType] = new byte[init_value.Length];
 
                 for (int i = 0; i < init_value.Length; i++)
                 {
@@ -986,7 +964,7 @@ namespace Openize.Heic.Decoder
             }
         }
 
-        private ContextVariable InitContextVariable(int SliceQpY, byte init_value)
+        private byte InitContextVariable(int SliceQpY, byte init_value)
         {
             // Outputs of this process are the initialized CABAC context variables indexed by ctxTable and ctxIdx.
             //
@@ -1007,7 +985,7 @@ namespace Openize.Heic.Decoder
             // a probability state index
             byte pStateIdx = (byte)(valMps ? (preCtxState - 64) : (63 - preCtxState)); // 4 bit
 
-            return new ContextVariable() { pStateIndex = pStateIdx, valMps = valMps };
+            return (byte)((pStateIdx << 1) | (valMps ? 1 : 0));
         }
 
         private byte[] Getinit_valueByType(CabacType type, int initType)

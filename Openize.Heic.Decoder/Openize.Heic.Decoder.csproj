@@ -78,7 +78,6 @@
     <Compile Include="Context\video_parameter_set_rbsp.cs" />
     <Compile Include="Context\sei_payload_rbsp.cs" />
     <Compile Include="IO\CabacType.cs" />
-    <Compile Include="IO\ContextVariable.cs" />
     <Compile Include="PixelFormat.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Rectangle.cs" />
