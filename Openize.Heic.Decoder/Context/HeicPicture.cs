@@ -43,14 +43,14 @@ namespace Openize.Heic.Decoder
 
         public uint[,] SliceAddrRs;
         public int[,] SliceHeaderIndex;
-        public IntraPredMode[,] IntraPredModeY;
-        public IntraPredMode[,] IntraPredModeC;
+        public BlockMap<IntraPredMode> IntraPredModeY;
+        public BlockMap<IntraPredMode> IntraPredModeC;
 
 
-        public int[,] CtDepth;
-        public PredMode[,] CuPredMode;
-        public int[,] QpY;
-        public int[,] Log2CbSize;
+        public BlockMap<int> CtDepth;
+        public BlockMap<PredMode> CuPredMode;
+        public BlockMap<int> QpY;
+        public BlockMap<int> Log2CbSize;
         public bool[,] merge_flag;
 
         public bool[,] cu_skip_flag;
@@ -286,20 +286,19 @@ namespace Openize.Heic.Decoder
         internal void SetCtDepth(int x0, int y0, int log2CbSize, int cqtDepth)
         {
             int nCbS = 1 << log2CbSize;
-            for (int i = x0; i < x0 + nCbS; i++)
-                for (int j = y0; j < y0 + nCbS; j++)
-                    CtDepth[i, j] = cqtDepth;
+            CtDepth.Fill(x0, y0, nCbS, cqtDepth);
         }
         internal void SetCuPredMode(int x0, int y0, int nCbS, PredMode mode)
         {
-            for (int i = x0; i < x0 + nCbS; i++)
+            CuPredMode.Fill(x0, y0, nCbS, mode);
+            if (mode == PredMode.MODE_SKIP)
             {
-                for (int j = y0; j < y0 + nCbS; j++)
+                for (int i = x0; i < x0 + nCbS; i++)
                 {
-                    CuPredMode[i, j] = mode;
-
-                    if(mode == PredMode.MODE_SKIP)
+                    for (int j = y0; j < y0 + nCbS; j++)
+                    {
                         merge_flag[i, j] = true;
+                    }
                 }
             }
         }
@@ -312,16 +311,12 @@ namespace Openize.Heic.Decoder
         internal void SetQpY(int x0, int y0, int log2CbSize, int qpY)
         {
             int nCbS = 1 << log2CbSize;
-            for (int i = x0; i < x0 + nCbS; i++)
-                for (int j = y0; j < y0 + nCbS; j++)
-                    QpY[i, j] = qpY;
+            QpY.Fill(x0, y0, nCbS, qpY);
         }
         internal void SetLog2CbSize(int x0, int y0, int log2CbSize)
         {
             int nCbS = 1 << log2CbSize;
-            for (int i = x0; i < x0 + nCbS; i++)
-                for (int j = y0; j < y0 + nCbS; j++)
-                    Log2CbSize[i, j] = log2CbSize;
+            Log2CbSize.Fill(x0, y0, nCbS, log2CbSize);
         }
 
         // 8.4.2 Derivation process for luma intra prediction mode
@@ -426,17 +421,13 @@ namespace Openize.Heic.Decoder
                 }
             }
 
-            for (int i = xPb; i < xPb + pbSize; i++)
-                for (int j = yPb; j < yPb + pbSize; j++)
-                    IntraPredModeY[i, j] = mode;
+            IntraPredModeY.Fill(xPb, yPb, pbSize, mode);
 
             return mode;
         }
         internal void SetIntraPredModeC(int xPb, int yPb, int pbSize, IntraPredMode mode)
         {
-            for (int i = xPb; i < xPb + pbSize; i++)
-                for (int j = yPb; j < yPb + pbSize; j++)
-                    IntraPredModeC[i, j] = mode;
+            IntraPredModeC.Fill(xPb, yPb, pbSize, mode);
         }
 
         internal IntraPredMode DeriveIntraPredModeIndex(IntraPredMode intraLumaPredMode, byte intraChromaPredMode)

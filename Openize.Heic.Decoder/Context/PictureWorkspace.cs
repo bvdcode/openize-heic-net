@@ -30,12 +30,12 @@ namespace Openize.Heic.Decoder
         internal readonly int[][,] sao_band_position;
         internal readonly uint[,] SliceAddrRs;
         internal readonly int[,] SliceHeaderIndex;
-        internal readonly IntraPredMode[,] IntraPredModeY;
-        internal readonly IntraPredMode[,] IntraPredModeC;
-        internal readonly int[,] CtDepth;
-        internal readonly PredMode[,] CuPredMode;
-        internal readonly int[,] QpY;
-        internal readonly int[,] Log2CbSize;
+        internal readonly BlockMap<IntraPredMode> IntraPredModeY;
+        internal readonly BlockMap<IntraPredMode> IntraPredModeC;
+        internal readonly BlockMap<int> CtDepth;
+        internal readonly BlockMap<PredMode> CuPredMode;
+        internal readonly BlockMap<int> QpY;
+        internal readonly BlockMap<int> Log2CbSize;
         internal readonly bool[,] merge_flag;
         internal readonly bool[,] cu_skip_flag;
         internal readonly bool[,] palette_mode_flag;
@@ -79,12 +79,12 @@ namespace Openize.Heic.Decoder
                 sao_band_position[i] = new int[sps.PicWidthInCtbsY, sps.PicHeightInCtbsY];
             }
 
-            CtDepth = new int[widthMax, heightMax];
-            CuPredMode = new PredMode[widthMax, heightMax];
-            QpY = new int[widthMax, heightMax];
-            Log2CbSize = new int[widthMax, heightMax];
-            IntraPredModeY = new IntraPredMode[widthMax, heightMax];
-            IntraPredModeC = new IntraPredMode[widthMax, heightMax];
+            CtDepth = new BlockMap<int>(widthMax, heightMax);
+            CuPredMode = new BlockMap<PredMode>(widthMax, heightMax);
+            QpY = new BlockMap<int>(widthMax, heightMax);
+            Log2CbSize = new BlockMap<int>(widthMax, heightMax);
+            IntraPredModeY = new BlockMap<IntraPredMode>(widthMax, heightMax);
+            IntraPredModeC = new BlockMap<IntraPredMode>(widthMax, heightMax);
 
             merge_flag = new bool[widthMax, heightMax];
             cu_skip_flag = new bool[widthMax, heightMax];
@@ -146,12 +146,12 @@ namespace Openize.Heic.Decoder
             }
             Array.Clear(SliceAddrRs, 0, SliceAddrRs.Length);
             Array.Clear(SliceHeaderIndex, 0, SliceHeaderIndex.Length);
-            Array.Clear(IntraPredModeY, 0, IntraPredModeY.Length);
-            Array.Clear(IntraPredModeC, 0, IntraPredModeC.Length);
-            Array.Clear(CtDepth, 0, CtDepth.Length);
-            Array.Clear(CuPredMode, 0, CuPredMode.Length);
-            Array.Clear(QpY, 0, QpY.Length);
-            Array.Clear(Log2CbSize, 0, Log2CbSize.Length);
+            IntraPredModeY.Clear();
+            IntraPredModeC.Clear();
+            CtDepth.Clear();
+            CuPredMode.Clear();
+            QpY.Clear();
+            Log2CbSize.Clear();
             Array.Clear(merge_flag, 0, merge_flag.Length);
             Array.Clear(cu_skip_flag, 0, cu_skip_flag.Length);
             Array.Clear(palette_mode_flag, 0, palette_mode_flag.Length);
