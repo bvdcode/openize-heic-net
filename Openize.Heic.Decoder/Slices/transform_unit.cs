@@ -653,32 +653,14 @@ namespace Openize.Heic.Decoder
             int matrixId = cIdx + (cuPredMode == PredMode.MODE_INTRA ? 0 : 3);
 
             int[] d = picture.Workspace.Scaled;
-            int scale;
-
-            int coeff;
-
-            for (int x = 0; x < nTbS; x++)
+            int[,] matrix = null;
+            if (picture.sps.scaling_list_enabled_flag &&
+                !(stream.Context.transform_skip_flag[cIdx] && nTbS > 4))
             {
-                for (int y = 0; y < nTbS; y++)
-                {
-                    coeff = picture.Workspace.Coefficients[x * nTbS + y];
-
-                    if (!picture.sps.scaling_list_enabled_flag ||
-                        (stream.Context.transform_skip_flag[cIdx] && nTbS > 4))
-                    {
-                        scale = 16;
-                    }
-                    else
-                    {
-                        scale = picture.Scaling.ScalingFactor[sizeId][matrixId][x, y];
-                    }
-
-
-                    d[x * nTbS + y] = MathExtra.Clip3(coeffMin, coeffMax,
-                        ((coeff * scale *
-                        levelScale[qP % 6] << (qP / 6)) + (1 << (bdShift - 1))) >> bdShift);
-                }
+                matrix = picture.Scaling.ScalingFactor[sizeId][matrixId];
             }
+            CoefficientScaling.Apply(picture.Workspace.Coefficients, d, nTbS, matrix,
+                levelScale[qP % 6], qP / 6, bdShift, coeffMin, coeffMax);
 
             return d;
         }

@@ -115,6 +115,7 @@
     <Compile Include="Slices\transform_tree.cs" />
     <Compile Include="Slices\transform_unit.cs" />
     <Compile Include="Slices\InverseTransform.cs" />
+    <Compile Include="Slices\CoefficientScaling.cs" />
     
     <Compile Include="MathExtra.cs" />
     <Compile Include="rsbp\NalUnit.cs" />
