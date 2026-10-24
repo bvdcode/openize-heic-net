@@ -27,6 +27,8 @@ namespace Openize.Heic.Decoder.IO
         /// </summary>
         internal Cabac Cabac { get; }
 
+        internal TileDecoderWorkspace Workspace { get; set; }
+
         /// <summary>
         /// Creates a class object with a stream object and an optional buffer size as parameters.
         /// </summary>

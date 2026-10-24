@@ -27,7 +27,7 @@ namespace Openize.Heic.Decoder
 
             if (slice_header.first_slice_segment_in_pic_flag)
             {
-                var picture = new HeicPicture(slice_header, NalHeader);
+                var picture = new HeicPicture(slice_header, NalHeader, stream.Workspace);
                 stream.Context.Pictures.Add(stream.CurrentImageId, picture);
                 slice_header.parentPicture = picture;
 

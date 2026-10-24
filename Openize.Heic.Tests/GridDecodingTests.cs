@@ -35,6 +35,30 @@ namespace Openize.Heic.Tests
             Assert.That(parallelStream.CanRead, Is.True);
         }
 
+        [TestCase("nokia/grid_960x640.heic")]
+        [TestCase("iphone_photo.heic")]
+        [TestCase("iphone_telephoto_with_scaling_list.heic")]
+        [TestCase("gimp_rgb_420_with_alpha.heic")]
+        public void ReusedTileStorageMatchesIndependentFrameDecoding(string filename)
+        {
+            byte[] encoded = File.ReadAllBytes(Path.Combine(SamplesPath, filename));
+            using MemoryStream independentStream = new MemoryStream(encoded, false);
+            HeicImage independentImage = HeicImage.Load(independentStream, 1);
+            foreach (HeicImageFrame frame in independentImage.AllFrames.Values)
+            {
+                if (frame.ImageType == ImageFrameType.hvc1)
+                {
+                    frame.GetByteArray(PixelFormat.Rgba32);
+                }
+            }
+            byte[] expected = independentImage.GetByteArray(PixelFormat.Rgba32);
+
+            using MemoryStream reusedStream = new MemoryStream(encoded, false);
+            HeicImage reusedImage = HeicImage.Load(reusedStream, 1);
+            byte[] actual = reusedImage.GetByteArray(PixelFormat.Rgba32);
+            Assert.That(actual.AsSpan().SequenceEqual(expected), Is.True);
+        }
+
         [Test]
         public async Task SharedGridCanBeDecodedConcurrently()
         {

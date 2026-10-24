@@ -26,12 +26,6 @@ namespace Openize.Heic.Decoder
             var sps = header.pps.sps;
             var picture = header.parentPicture;
 
-            if (picture.SliceAddrRs == null) 
-                picture.SliceAddrRs = new uint[sps.PicWidthInCtbsY, sps.PicHeightInCtbsY];
-
-            if (picture.SliceHeaderIndex == null)
-                picture.SliceHeaderIndex = new int[sps.PicWidthInCtbsY << sps.CtbLog2SizeY, sps.PicHeightInCtbsY << sps.CtbLog2SizeY];
-
             do
             {
                 int xCtu = (int)(header.CtbAddrInRs % sps.PicWidthInCtbsY);

@@ -14,6 +14,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Openize.Heic.Decoder
@@ -428,7 +429,7 @@ namespace Openize.Heic.Decoder
 
         #region Private Methods
 
-        private byte[,,] GetMultidimArray(Rectangle boundsRectangle)
+        private byte[,,] GetMultidimArray(Rectangle boundsRectangle, TileDecoderWorkspace workspace = null)
         {
             byte[,,] rgba = null;
 
@@ -441,7 +442,7 @@ namespace Openize.Heic.Decoder
             switch (ImageType)
             {
                 case ImageFrameType.hvc1:
-                    LoadHvcRawPixels();
+                    LoadHvcRawPixels(workspace);
 
                     var converter = new YuvConverter(this);
                     rgba = converter.GetRgbaByteArray();
@@ -449,13 +450,13 @@ namespace Openize.Heic.Decoder
                 case ImageFrameType.iden:
                     var derived = parent.Header.GetDerivedList(id);
                     HeicImageFrame frame = parent.AllFrames[derived[0]];
-                    rgba = frame.GetMultidimArray(new Rectangle(0, 0, (int)frame.Width, (int)frame.Height));
+                    rgba = frame.GetMultidimArray(new Rectangle(0, 0, (int)frame.Width, (int)frame.Height), workspace);
                     break;
                 case ImageFrameType.iovl:
-                    rgba = GetByteArrayForOverlay(databox);
+                    rgba = GetByteArrayForOverlay(databox, workspace);
                     break;
                 case ImageFrameType.grid:
-                    rgba = GetByteArrayForGrid(databox);
+                    rgba = GetByteArrayForGrid(databox, workspace);
                     break;
                 default:
                     throw new Exception("Unknown image type.");
@@ -466,7 +467,7 @@ namespace Openize.Heic.Decoder
 
             rgba = TransformImage(rgba);
 
-            rgba = AddAlphaLayer(rgba, boundsRectangle);
+            rgba = AddAlphaLayer(rgba, boundsRectangle, workspace);
 
             return rgba;
         }
@@ -484,12 +485,12 @@ namespace Openize.Heic.Decoder
             return boundsRectangle;
         }
 
-        private byte[,,] AddAlphaLayer(byte[,,] pixels, Rectangle boundsRectangle)
+        private byte[,,] AddAlphaLayer(byte[,,] pixels, Rectangle boundsRectangle, TileDecoderWorkspace workspace)
         {
             if (alphaReference == null)
                 return pixels;
 
-            var alpha = parent.AllFrames[alphaReference ?? 0].GetMultidimArray(boundsRectangle);
+            var alpha = parent.AllFrames[alphaReference ?? 0].GetMultidimArray(boundsRectangle, workspace);
 
             for (uint row = 0; row < Height; row++)
             {
@@ -594,7 +595,7 @@ namespace Openize.Heic.Decoder
             return rgba;
         }
 
-        private void LoadHvcRawPixels()
+        private void LoadHvcRawPixels(TileDecoderWorkspace workspace)
         {
             lock (decodeLock)
             {
@@ -607,6 +608,7 @@ namespace Openize.Heic.Decoder
                 long length = locationBox.extents[0].length;
                 using (BitStreamWithNalSupport reader = stream.CreateFrameReader(id, offset, length))
                 {
+                    reader.Workspace = workspace;
                     while (reader.GetBitPosition() / 8 < (ulong)length)
                     {
                         NalUnit.ParseUnit(reader);
@@ -625,7 +627,7 @@ namespace Openize.Heic.Decoder
             }
         }
 
-        private byte[,,] GetByteArrayForGrid(byte[] databox)
+        private byte[,,] GetByteArrayForGrid(byte[] databox, TileDecoderWorkspace workspace)
         {
             int gridFieldLength = ((databox[1] & 1) + 1) * 2;
 
@@ -639,12 +641,12 @@ namespace Openize.Heic.Decoder
             byte[,,] output = new byte[localWidth, localHeight, 4];
             int tileCount = (rows + 1) * (columns + 1);
 
-            Action<int> decodeTile = index =>
+            Action<int, TileDecoderWorkspace> decodeTile = (index, tileWorkspace) =>
             {
                 int row = index / (columns + 1);
                 int column = index % (columns + 1);
                 HeicImageFrame frame = parent.AllFrames[derived[index]];
-                byte[,,] framePixels = frame.GetMultidimArray(new Rectangle(0, 0, (int)frame.Width, (int)frame.Height));
+                byte[,,] framePixels = frame.GetMultidimArray(new Rectangle(0, 0, (int)frame.Width, (int)frame.Height), tileWorkspace);
 
                 for (int x = 0; x < frame.Width; x++)
                 {
@@ -661,28 +663,43 @@ namespace Openize.Heic.Decoder
                 }
             };
 
-            int batchSize = Math.Min(parent.MaximumDecodingThreads, tileCount);
-            ParallelOptions options = new ParallelOptions
+            if (workspace is null)
             {
-                MaxDegreeOfParallelism = batchSize
-            };
-            for (int first = 0; first < tileCount; first += batchSize)
-            {
-                int end = Math.Min(first + batchSize, tileCount);
-                if (batchSize == 1)
+                int workerCount = Math.Min(parent.MaximumDecodingThreads, tileCount);
+                int nextTile = -1;
+                Action<int> decodeWorker = workerIndex =>
                 {
-                    decodeTile(first);
+                    TileDecoderWorkspace tileWorkspace = new TileDecoderWorkspace();
+                    int index;
+                    while ((index = Interlocked.Increment(ref nextTile)) < tileCount)
+                    {
+                        decodeTile(index, tileWorkspace);
+                    }
+                };
+                if (workerCount == 1)
+                {
+                    decodeWorker(0);
                 }
                 else
                 {
-                    Parallel.For(first, end, options, decodeTile);
+                    ParallelOptions options = new ParallelOptions
+                    {
+                        MaxDegreeOfParallelism = workerCount
+                    };
+                    Parallel.For(0, workerCount, options, decodeWorker);
                 }
-                GC.Collect();
+            }
+            else
+            {
+                for (int index = 0; index < tileCount; index++)
+                {
+                    decodeTile(index, workspace);
+                }
             }
             return output;
         }
 
-        private byte[,,] GetByteArrayForOverlay(byte[] databox)
+        private byte[,,] GetByteArrayForOverlay(byte[] databox, TileDecoderWorkspace workspace)
         {
             var derived = parent.Header.GetDerivedList(id);
 
@@ -725,7 +742,7 @@ namespace Openize.Heic.Decoder
             for (int i = 0; i < derived.Length; i++)
             {
                 frame = parent.AllFrames[derived[i]];
-                framePixels = frame.GetMultidimArray(new Rectangle(0, 0, (int)frame.Width, (int)frame.Height));
+                framePixels = frame.GetMultidimArray(new Rectangle(0, 0, (int)frame.Width, (int)frame.Height), workspace);
 
                 for (int k = 0; k < frame.Height; k++)
                 {

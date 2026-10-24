@@ -66,6 +66,8 @@
 
     <Compile Include="Context\DecoderContext.cs" />
     <Compile Include="Context\BlockWorkspace.cs" />
+    <Compile Include="Context\PictureWorkspace.cs" />
+    <Compile Include="Context\TileDecoderWorkspace.cs" />
     <Compile Include="Context\hrd_parameters.cs" />
     <Compile Include="Context\HeicPicture.cs" />
     <Compile Include="Context\pic_parameter_set_rbsp.cs" />

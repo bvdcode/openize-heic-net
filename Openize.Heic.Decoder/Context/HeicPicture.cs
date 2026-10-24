@@ -15,7 +15,7 @@ namespace Openize.Heic.Decoder
 {
     internal class HeicPicture
     {
-        internal BlockWorkspace Workspace { get; } = new BlockWorkspace();
+        internal BlockWorkspace Workspace { get; }
 
         internal Scaling Scaling { get; }
 
@@ -79,7 +79,7 @@ namespace Openize.Heic.Decoder
         public byte[][,] pixels;
         public ushort[][,] pixels_high_color_range;
 
-        public HeicPicture(slice_segment_header slice_header, NalHeader nal_header)
+        public HeicPicture(slice_segment_header slice_header, NalHeader nal_header, TileDecoderWorkspace workspace)
         {
             SliceHeaders = new Dictionary<int, slice_segment_header>();
             SliceUnits = new Dictionary<int, slice_segment_data>();
@@ -90,74 +90,66 @@ namespace Openize.Heic.Decoder
             Scaling = new Scaling(sps);
             NalHeader = nal_header;
 
-            uint widthMax = sps.pic_width_in_luma_samples;
-            uint heightMax = sps.pic_height_in_luma_samples;
-
-            widthMax = sps.PicWidthInCtbsY << sps.CtbLog2SizeY;
-            heightMax = sps.PicHeightInCtbsY << sps.CtbLog2SizeY;
-
-            int chroma_count = sps.ChromaArrayType != 0 ? 3 : 1;
-
-            SaoTypeIdx = new int[chroma_count][,];
-            SaoEoClass = new int[chroma_count][,];
-            ResScaleVal = new int[chroma_count][,];
-            SaoOffsetVal = new int[chroma_count][,][];
-            sao_offset_abs = new int[chroma_count][,][];
-            sao_offset_sign = new int[chroma_count][,][];
-            sao_band_position = new int[chroma_count][,];
-            TransCoeffLevel = new int[chroma_count][,];
-
-            if (sps.BitDepthY > 8 || sps.BitDepthC > 8)
-                pixels_high_color_range = new ushort[chroma_count][,];
-            else
-                pixels = new byte[chroma_count][,];
-
-            for (int i = 0; i < chroma_count; i++)
+            PictureWorkspace buffers;
+            if (workspace is null)
             {
-                SaoTypeIdx[i] = new int[sps.PicWidthInCtbsY, sps.PicHeightInCtbsY];
-                SaoEoClass[i] = new int[sps.PicWidthInCtbsY, sps.PicHeightInCtbsY];
-                ResScaleVal[i] = new int[sps.PicWidthInCtbsY, sps.PicHeightInCtbsY];
-                SaoOffsetVal[i] = new int[sps.PicWidthInCtbsY, sps.PicHeightInCtbsY][];
-                sao_offset_abs[i] = new int[sps.PicWidthInCtbsY, sps.PicHeightInCtbsY][];
-                sao_offset_sign[i] = new int[sps.PicWidthInCtbsY, sps.PicHeightInCtbsY][];
-                sao_band_position[i] = new int[sps.PicWidthInCtbsY, sps.PicHeightInCtbsY];
-
-                TransCoeffLevel[i] = new int[widthMax, heightMax];
-
-                if (sps.BitDepthY > 8 || sps.BitDepthC > 8)
-                    pixels_high_color_range[i] = new ushort[widthMax, heightMax];
-                else
-                    pixels[i] = new byte[widthMax, heightMax];
+                buffers = new PictureWorkspace(sps);
             }
+            else
+            {
+                buffers = workspace.GetPictureWorkspace(sps);
+            }
+            Workspace = buffers.Block;
+            SaoTypeIdx = buffers.SaoTypeIdx;
+            SaoOffsetVal = buffers.SaoOffsetVal;
+            SaoEoClass = buffers.SaoEoClass;
+            ResScaleVal = buffers.ResScaleVal;
+            sao_offset_abs = buffers.sao_offset_abs;
+            sao_offset_sign = buffers.sao_offset_sign;
+            sao_band_position = buffers.sao_band_position;
+            SliceAddrRs = buffers.SliceAddrRs;
+            SliceHeaderIndex = buffers.SliceHeaderIndex;
+            IntraPredModeY = buffers.IntraPredModeY;
+            IntraPredModeC = buffers.IntraPredModeC;
+            TransCoeffLevel = buffers.TransCoeffLevel;
+            CtDepth = buffers.CtDepth;
+            CuPredMode = buffers.CuPredMode;
+            QpY = buffers.QpY;
+            Log2CbSize = buffers.Log2CbSize;
+            merge_flag = buffers.merge_flag;
+            cu_skip_flag = buffers.cu_skip_flag;
+            palette_mode_flag = buffers.palette_mode_flag;
+            pcm_flag = buffers.pcm_flag;
+            prev_intra_luma_pred_flag = buffers.prev_intra_luma_pred_flag;
+            mpm_idx = buffers.mpm_idx;
+            rem_intra_luma_pred_mode = buffers.rem_intra_luma_pred_mode;
+            intra_chroma_pred_mode = buffers.intra_chroma_pred_mode;
+            tu_residual_act_flag = buffers.tu_residual_act_flag;
+            cbf_cb = buffers.cbf_cb;
+            cbf_cr = buffers.cbf_cr;
+            cbf_luma = buffers.cbf_luma;
+            explicit_rdpcm_flag = buffers.explicit_rdpcm_flag;
+            explicit_rdpcm_dir_flag = buffers.explicit_rdpcm_dir_flag;
 
-            CtDepth = new int[widthMax, heightMax];
-            CuPredMode = new PredMode[widthMax, heightMax];
-            QpY = new int[widthMax, heightMax];
-            Log2CbSize = new int[widthMax, heightMax];
-            IntraPredModeY = new IntraPredMode[widthMax, heightMax];
-            IntraPredModeC = new IntraPredMode[widthMax, heightMax];
-
-
-            merge_flag = new bool[widthMax, heightMax];
-            cu_skip_flag = new bool[widthMax, heightMax];
-            palette_mode_flag = new bool[widthMax, heightMax];
-            pcm_flag = new bool[widthMax, heightMax];
-            prev_intra_luma_pred_flag = new bool[widthMax, heightMax];
-
-            mpm_idx = new int[widthMax, heightMax];
-            rem_intra_luma_pred_mode = new IntraPredMode[widthMax, heightMax];
-            intra_chroma_pred_mode = new byte[widthMax, heightMax];
-
-            tu_residual_act_flag = new bool[widthMax, heightMax];
-
-            //split_transform_flag = new bool[xMax, yMax][];
-            cbf_cb = new bool[widthMax, heightMax][];
-            cbf_cr = new bool[widthMax, heightMax][];
-            cbf_luma = new bool[widthMax, heightMax][];
-
-            //transform_skip_flag = new bool[xMax, yMax][];
-            explicit_rdpcm_flag = new bool[widthMax, heightMax][];
-            explicit_rdpcm_dir_flag = new bool[widthMax, heightMax][];
+            uint widthMax = sps.PicWidthInCtbsY << sps.CtbLog2SizeY;
+            uint heightMax = sps.PicHeightInCtbsY << sps.CtbLog2SizeY;
+            int chroma_count = sps.ChromaArrayType != 0 ? 3 : 1;
+            if (sps.BitDepthY > 8 || sps.BitDepthC > 8)
+            {
+                pixels_high_color_range = new ushort[chroma_count][,];
+                for (int i = 0; i < chroma_count; i++)
+                {
+                    pixels_high_color_range[i] = new ushort[widthMax, heightMax];
+                }
+            }
+            else
+            {
+                pixels = new byte[chroma_count][,];
+                for (int i = 0; i < chroma_count; i++)
+                {
+                    pixels[i] = new byte[widthMax, heightMax];
+                }
+            }
         }
 
         public void CleanMemory()
