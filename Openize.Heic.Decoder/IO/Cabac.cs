@@ -803,7 +803,7 @@ namespace Openize.Heic.Decoder
             {
                 ivlCurrRange <<= 1;
                 ivlOffset <<= 1;
-                ivlOffset |= stream.Read(1);
+                ivlOffset |= stream.ReadBit();
             }
         }
 
@@ -811,7 +811,7 @@ namespace Openize.Heic.Decoder
         int DecodeBypass()
         {
             ivlOffset <<= 1;
-            ivlOffset |= stream.Read(1);
+            ivlOffset |= stream.ReadBit();
 
             if (ivlOffset >= ivlCurrRange)
             {

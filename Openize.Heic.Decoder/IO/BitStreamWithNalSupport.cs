@@ -11,6 +11,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.CompilerServices;
 using Openize.IsoBmff.IO;
 
 namespace Openize.Heic.Decoder.IO
@@ -213,6 +214,19 @@ namespace Openize.Heic.Decoder.IO
         public new bool ReadFlag()
         {
             return Read(1) == 1;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal int ReadBit()
+        {
+            if (state.BufferPosition >= 0 && state.BitIndex > 0 && state.BitIndex < 8)
+            {
+                int value = (state.Buffer[state.BufferPosition] >> (7 - state.BitIndex)) & 1;
+                state.BitIndex++;
+                return value;
+            }
+
+            return Read(1);
         }
 
         /// <summary>
