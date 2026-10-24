@@ -44,100 +44,79 @@ namespace Openize.Heic.Decoder
         }
 
 
-        // 8 bit!
-
         /// <summary>
-        /// Convert YUV byte array to RGBA.
+        /// Convert YUV samples to RGBA pixels.
         /// </summary>
-        /// <returns>RGBA byte array.</returns>
+        /// <returns>RGBA pixels.</returns>
         public RgbaImage GetRgbaImage()
         {
-            uint width = picture.hvcConfig.SPS.pic_width_in_luma_samples;
-            uint height = picture.hvcConfig.SPS.pic_height_in_luma_samples;
-
-            RgbaImage image = new RgbaImage((int)width, (int)height);
+            seq_parameter_set_rbsp sps = picture.hvcConfig.SPS;
+            int width = (int)sps.pic_width_in_luma_samples;
+            int height = (int)sps.pic_height_in_luma_samples;
+            RgbaImage image = new RgbaImage(width, height);
             byte[] pixels = image.Pixels;
 
-            if (picture.rawPixels == null && picture.rawPixelsHighColorRange == null)
-                return image;
-
-            double Y, Cr, Cb, R, G, B;
-
-            int chromaHalfRange = 1 << (picture.hvcConfig.SPS.BitDepthC - 1);
-            int lumaOffset = 16 << (picture.hvcConfig.SPS.BitDepthY - 8);
-
-            double tvRangeCoeffLuma = 255.0 / 219;
-            double tvRangeCoeffChroma = 255.0 / 224;
-
-            // convertion to 8 bit
-            double BitKoefY = 256.0 / (1 << picture.hvcConfig.SPS.BitDepthY);
-            double BitKoefC = 256.0 / (1 << picture.hvcConfig.SPS.BitDepthC);
-
-            bool highColorRange = picture.hvcConfig.SPS.BitDepthY > 8 || picture.hvcConfig.SPS.BitDepthC > 8;
-
-            for (int col = 0; col < width; col++)
+            if (picture.rawPixels is null && picture.rawPixelsHighColorRange is null)
             {
-                for (int row = 0; row < height; row++)
-                {
-                    if (highColorRange)
-                        Y = picture.rawPixelsHighColorRange[0][col, row];
-                    else
-                        Y = picture.rawPixels[0][col, row];
-
-                    if (!fullRangeFlag)
-                        Y = tvRangeCoeffLuma * (Y - lumaOffset);
-
-                    if (picture.hvcConfig.SPS.ChromaArrayType == 0)
-                    {
-                        (R, G, B) = (Y, Y, Y);
-                    }
-                    else
-                    {
-                        if (highColorRange)
-                        {
-                            Cb = picture.rawPixelsHighColorRange[1][col / picture.hvcConfig.SPS.SubWidthC, row / picture.hvcConfig.SPS.SubHeightC] - chromaHalfRange;
-                            Cr = picture.rawPixelsHighColorRange[2][col / picture.hvcConfig.SPS.SubWidthC, row / picture.hvcConfig.SPS.SubHeightC] - chromaHalfRange;
-                        }
-                        else
-                        {
-                            Cb = picture.rawPixels[1][col / picture.hvcConfig.SPS.SubWidthC, row / picture.hvcConfig.SPS.SubHeightC] - chromaHalfRange;
-                            Cr = picture.rawPixels[2][col / picture.hvcConfig.SPS.SubWidthC, row / picture.hvcConfig.SPS.SubHeightC] - chromaHalfRange;
-                        }
-
-                        if (!fullRangeFlag)
-                        {
-                            Cb = tvRangeCoeffChroma * Cb;
-                            Cr = tvRangeCoeffChroma * Cr;
-                        }
-
-                        (R, G, B) = YCrCb2RGB(Y * BitKoefY, Cb * BitKoefC, Cr * BitKoefC);
-                    }
-
-                    int index = row * image.Stride + col * RgbaImage.BytesPerPixel;
-                    pixels[index] = (byte)MathExtra.Clip3(0, 255, (int)R);
-                    pixels[index + 1] = (byte)MathExtra.Clip3(0, 255, (int)G);
-                    pixels[index + 2] = (byte)MathExtra.Clip3(0, 255, (int)B);
-                    pixels[index + 3] = 255;
-                }
+                return image;
             }
 
-            return image;
-        }
+            bool highColorRange = sps.BitDepthY > 8 || sps.BitDepthC > 8;
+            bool hasChroma = sps.ChromaArrayType != 0;
+            int subWidth = sps.SubWidthC;
+            int subHeight = sps.SubHeightC;
+            int chromaHalfRange = 1 << (sps.BitDepthC - 1);
+            int lumaOffset = 16 << (sps.BitDepthY - 8);
+            double lumaScale = hasChroma ? 256.0 / (1 << sps.BitDepthY) : 1.0;
+            double chromaScale = 256.0 / (1 << sps.BitDepthC);
+            const double TvRangeLuma = 255.0 / 219;
+            const double TvRangeChroma = 255.0 / 224;
+            byte[,] luma8 = highColorRange ? null : picture.rawPixels[0];
+            ushort[,] lumaHigh = highColorRange ? picture.rawPixelsHighColorRange[0] : null;
+            byte[,] cb8 = !highColorRange && hasChroma ? picture.rawPixels[1] : null;
+            byte[,] cr8 = !highColorRange && hasChroma ? picture.rawPixels[2] : null;
+            ushort[,] cbHigh = highColorRange && hasChroma ? picture.rawPixelsHighColorRange[1] : null;
+            ushort[,] crHigh = highColorRange && hasChroma ? picture.rawPixelsHighColorRange[2] : null;
 
-        /// <summary>
-        /// Calculate RGB values from YCrCb based on curred converter settings.
-        /// </summary>
-        /// <param name="Y">Luma value.</param>
-        /// <param name="Cb">Chroma blue value.</param>
-        /// <param name="Cr">Chroma red value.</param>
-        /// <returns>Red, Green and Blue values.</returns>
-        private (double, double, double) YCrCb2RGB(double Y, double Cb, double Cr)
-        {
-            return (
-                Y + cooffCrToR * Cr,
-                Y - cooffCrToG * Cr - cooffCbToG * Cb,
-                Y + cooffCbToB * Cb
-            );
+            for (int row = 0; row < height; row++)
+            {
+                int index = row * image.Stride;
+                int chromaRow = row / subHeight;
+                for (int column = 0; column < width; column++)
+                {
+                    double luma = highColorRange ? lumaHigh[column, row] : luma8[column, row];
+                    if (!fullRangeFlag)
+                    {
+                        luma = TvRangeLuma * (luma - lumaOffset);
+                    }
+                    double red = luma;
+                    double green = luma;
+                    double blue = luma;
+                    if (hasChroma)
+                    {
+                        int chromaColumn = column / subWidth;
+                        double cb = (highColorRange ? cbHigh[chromaColumn, chromaRow] : cb8[chromaColumn, chromaRow]) - chromaHalfRange;
+                        double cr = (highColorRange ? crHigh[chromaColumn, chromaRow] : cr8[chromaColumn, chromaRow]) - chromaHalfRange;
+                        if (!fullRangeFlag)
+                        {
+                            cb = TvRangeChroma * cb;
+                            cr = TvRangeChroma * cr;
+                        }
+                        luma *= lumaScale;
+                        cb *= chromaScale;
+                        cr *= chromaScale;
+                        red = luma + cooffCrToR * cr;
+                        green = luma - cooffCrToG * cr - cooffCbToG * cb;
+                        blue = luma + cooffCbToB * cb;
+                    }
+                    pixels[index] = (byte)MathExtra.Clip3(0, 255, (int)red);
+                    pixels[index + 1] = (byte)MathExtra.Clip3(0, 255, (int)green);
+                    pixels[index + 2] = (byte)MathExtra.Clip3(0, 255, (int)blue);
+                    pixels[index + 3] = 255;
+                    index += RgbaImage.BytesPerPixel;
+                }
+            }
+            return image;
         }
 
         /// <summary>

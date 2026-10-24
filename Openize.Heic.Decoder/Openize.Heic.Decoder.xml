@@ -1303,18 +1303,9 @@
         </member>
         <member name="M:Openize.Heic.Decoder.YuvConverter.GetRgbaImage">
             <summary>
-            Convert YUV byte array to RGBA.
+            Convert YUV samples to RGBA pixels.
             </summary>
-            <returns>RGBA byte array.</returns>
-        </member>
-        <member name="M:Openize.Heic.Decoder.YuvConverter.YCrCb2RGB(System.Double,System.Double,System.Double)">
-            <summary>
-            Calculate RGB values from YCrCb based on curred converter settings.
-            </summary>
-            <param name="Y">Luma value.</param>
-            <param name="Cb">Chroma blue value.</param>
-            <param name="Cr">Chroma red value.</param>
-            <returns>Red, Green and Blue values.</returns>
+            <returns>RGBA pixels.</returns>
         </member>
         <member name="M:Openize.Heic.Decoder.YuvConverter.DefineCoefficients(Openize.Heic.Decoder.vui_parameters)">
             <summary>
