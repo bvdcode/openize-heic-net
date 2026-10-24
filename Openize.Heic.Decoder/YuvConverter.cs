@@ -74,9 +74,9 @@ namespace Openize.Heic.Decoder
 
             bool highColorRange = picture.hvcConfig.SPS.BitDepthY > 8 || picture.hvcConfig.SPS.BitDepthC > 8;
 
-            for (int row = 0; row < height; row++)
+            for (int col = 0; col < width; col++)
             {
-                for (int col = 0; col < width; col++)
+                for (int row = 0; row < height; row++)
                 {
                     if (highColorRange)
                         Y = picture.rawPixelsHighColorRange[0][col, row];

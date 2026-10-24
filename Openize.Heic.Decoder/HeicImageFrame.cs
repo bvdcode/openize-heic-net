@@ -650,9 +650,9 @@ namespace Openize.Heic.Decoder
                     frame = parent.AllFrames[derived[index]];
                     framePixels = frame.GetMultidimArray(new Rectangle(0, 0, (int)frame.Width, (int)frame.Height));
 
-                    for (int k = 0; k < frame.Height; k++)
+                    for (int l = 0; l < frame.Width; l++)
                     {
-                        for (int l = 0; l < frame.Width; l++)
+                        for (int k = 0; k < frame.Height; k++)
                         {
                             if (j * frame.Width + l < localWidth && i * frame.Height + k < localHeight)
                             {
