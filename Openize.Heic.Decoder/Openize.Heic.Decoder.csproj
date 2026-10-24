@@ -102,7 +102,7 @@
     <Compile Include="Slices\PredMode.cs" />
     <Compile Include="Slices\pred_weight_table.cs" />
     <Compile Include="Slices\ref_pic_lists_modification.cs" />
-    <Compile Include="Slices\residual_coding.cs" />
+    <Compile Include="Slices\ResidualDecoder.cs" />
     <Compile Include="Slices\sao.cs" />
     <Compile Include="Slices\SliceType.cs" />
     <Compile Include="Slices\slice_segment_data.cs" />

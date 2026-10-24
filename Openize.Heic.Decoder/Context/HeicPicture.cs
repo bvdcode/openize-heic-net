@@ -70,8 +70,6 @@ namespace Openize.Heic.Decoder
         public bool[,][] cbf_luma;
 
         //public bool[,][] transform_skip_flag;
-        public bool[,][] explicit_rdpcm_flag;
-        public bool[,][] explicit_rdpcm_dir_flag;
 
         public int[] pcm_sample_luma;
         public int[] pcm_sample_chroma;
@@ -128,8 +126,6 @@ namespace Openize.Heic.Decoder
             cbf_cb = buffers.cbf_cb;
             cbf_cr = buffers.cbf_cr;
             cbf_luma = buffers.cbf_luma;
-            explicit_rdpcm_flag = buffers.explicit_rdpcm_flag;
-            explicit_rdpcm_dir_flag = buffers.explicit_rdpcm_dir_flag;
 
             uint widthMax = sps.PicWidthInCtbsY << sps.CtbLog2SizeY;
             uint heightMax = sps.PicHeightInCtbsY << sps.CtbLog2SizeY;
@@ -194,8 +190,6 @@ namespace Openize.Heic.Decoder
             cbf_cb = null;
             cbf_cr = null;
             cbf_luma = null;
-            explicit_rdpcm_flag = null;
-            explicit_rdpcm_dir_flag = null;
             pcm_sample_luma = null;
             pcm_sample_chroma = null;
         }

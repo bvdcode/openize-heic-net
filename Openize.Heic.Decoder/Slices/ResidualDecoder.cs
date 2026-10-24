@@ -14,28 +14,20 @@ using Openize.Heic.Decoder.IO;
 namespace Openize.Heic.Decoder
 {
     // 7.4.9.11 Residual coding semantics
-    internal class residual_coding
+    internal static class ResidualDecoder
     {
-        internal int last_sig_coeff_x_prefix;
-        internal int last_sig_coeff_y_prefix;
-        internal int last_sig_coeff_x_suffix;
-        internal int last_sig_coeff_y_suffix;
-
-        private bool[,] coded_sub_block_flag;
-
-        public residual_coding(BitStreamWithNalSupport stream, slice_segment_header header,
+        internal static void Decode(BitStreamWithNalSupport stream, slice_segment_header header,
             int x0, int y0, int log2TrafoSize, int cIdx)
         {
-            var pps = header.pps;
-            var sps = header.pps.sps;
-            var picture = header.parentPicture;
+            pic_parameter_set_rbsp pps = header.pps;
+            seq_parameter_set_rbsp sps = pps.sps;
+            HeicPicture picture = header.parentPicture;
             DecoderContext context = stream.Context;
             Cabac cabac = stream.Cabac;
 
             context.transform_skip_flag[cIdx] = false;
 
-            if (picture.explicit_rdpcm_flag[x0, y0] == null)
-                picture.explicit_rdpcm_flag[x0, y0] = new bool[3];
+            bool explicitRdpcm = false;
 
             if (header.pps.transform_skip_enabled_flag && !context.cu_transquant_bypass_flag &&
                 (log2TrafoSize <= pps.Log2MaxTransformSkipSize))
@@ -45,14 +37,17 @@ namespace Openize.Heic.Decoder
                 header.pps.sps.sps_range_ext.explicit_rdpcm_enabled_flag &&
                 (context.transform_skip_flag[cIdx] || context.cu_transquant_bypass_flag))
             {
-                picture.explicit_rdpcm_flag[x0, y0][cIdx] = cabac.read_explicit_rdpcm_flag(cIdx);
-
-                if (picture.explicit_rdpcm_flag[x0, y0][cIdx])
-                    picture.explicit_rdpcm_dir_flag[x0, y0][cIdx] = cabac.read_explicit_rdpcm_dir_flag(cIdx);
+                explicitRdpcm = cabac.read_explicit_rdpcm_flag(cIdx);
+                if (explicitRdpcm)
+                {
+                    cabac.read_explicit_rdpcm_dir_flag(cIdx);
+                }
             }
 
-            last_sig_coeff_x_prefix = cabac.read_last_sig_coeff_prefix(log2TrafoSize, cIdx, CabacType.last_sig_coeff_x_prefix);
-            last_sig_coeff_y_prefix = cabac.read_last_sig_coeff_prefix(log2TrafoSize, cIdx, CabacType.last_sig_coeff_y_prefix);
+            int last_sig_coeff_x_suffix = 0;
+            int last_sig_coeff_y_suffix = 0;
+            int last_sig_coeff_x_prefix = cabac.read_last_sig_coeff_prefix(log2TrafoSize, cIdx, CabacType.last_sig_coeff_x_prefix);
+            int last_sig_coeff_y_prefix = cabac.read_last_sig_coeff_prefix(log2TrafoSize, cIdx, CabacType.last_sig_coeff_y_prefix);
 
             if (last_sig_coeff_x_prefix > 3)
                 last_sig_coeff_x_suffix = cabac.read_last_sig_coeff_suffix(last_sig_coeff_x_prefix);
@@ -92,29 +87,20 @@ namespace Openize.Heic.Decoder
             byte[][] subBlockScan = Scans.ScanOrder[log2TrafoSize - 2][scanIdx];
             byte[][] coefficientScan = Scans.ScanOrder[2][scanIdx];
 
-            int lastScanPos = 16;
-            int lastSubBlock = (1 << (log2TrafoSize - 2)) * (1 << (log2TrafoSize - 2)) - 1;
+            int lastSubBlock = Scans.GetScanPosition(log2TrafoSize - 2, scanIdx,
+                LastSignificantCoeffX >> 2, LastSignificantCoeffY >> 2);
+            int lastScanPos = Scans.GetScanPosition(2, scanIdx,
+                LastSignificantCoeffX & 3, LastSignificantCoeffY & 3);
 
-            uint xS, yS, xC, yC;
-            do
-            {
-                if (lastScanPos == 0)
-                {
-                    lastScanPos = 16;
-                    lastSubBlock--;
-                }
-
-                lastScanPos--;
-
-                xS = subBlockScan[lastSubBlock][0];
-                yS = subBlockScan[lastSubBlock][1];
-
-                xC = (xS << 2) + coefficientScan[lastScanPos][0];
-                yC = (yS << 2) + coefficientScan[lastScanPos][1];
-            } while ((xC != LastSignificantCoeffX) || (yC != LastSignificantCoeffY));
-
-            coded_sub_block_flag = picture.Workspace.CodedSubBlocks;
+            bool[,] coded_sub_block_flag = picture.Workspace.CodedSubBlocks;
             Array.Clear(coded_sub_block_flag, 0, coded_sub_block_flag.Length);
+            bool transformSkip = context.transform_skip_flag[cIdx];
+            bool persistentRiceAdaptation = sps.sps_range_ext.persistent_rice_adaptation_enabled_flag;
+            bool signDataHiding = pps.sign_data_hiding_enabled_flag;
+            int coefficientBaseX = cIdx == 0 ? x0 : x0 / sps.SubWidthC;
+            int coefficientBaseY = cIdx == 0 ? y0 : y0 / sps.SubHeightC;
+            int[,] coefficients = picture.TransCoeffLevel[cIdx];
+            int xS, yS, xC, yC;
 
             int lastSubblock_greater1Ctx = 0;
 
@@ -130,7 +116,6 @@ namespace Openize.Heic.Decoder
                 yS = subBlockScan[i][1];
 
                 int significantCoefficients = 0;
-                int escapeDataPresent = 0;
                 bool inferSbDcSigCoeffFlag = false;
 
                 if ((i < lastSubBlock) && (i > 0))
@@ -144,6 +129,13 @@ namespace Openize.Heic.Decoder
                     coded_sub_block_flag[xS, yS] = true;
                 }
 
+                if (!coded_sub_block_flag[xS, yS])
+                {
+                    firstSubblock = false;
+                    lastSubblock_greater1Ctx = lastInvocation_greater1Ctx;
+                    continue;
+                }
+
                 if (i == lastSubBlock)
                 {
                     significantCoefficients |= 1 << lastScanPos;
@@ -154,24 +146,20 @@ namespace Openize.Heic.Decoder
                     xC = (xS << 2) + coefficientScan[n][0];
                     yC = (yS << 2) + coefficientScan[n][1];
 
-                    if (coded_sub_block_flag[xS, yS])
+                    if (n > 0 || !inferSbDcSigCoeffFlag)
                     {
-                        if (n > 0 || !inferSbDcSigCoeffFlag)
-                        {
-                            if (cabac.read_sig_coeff_flag(picture,
-                                context.transform_skip_flag[cIdx], (int)xC, (int)yC,
-                                coded_sub_block_flag, cIdx, log2TrafoSize, scanIdx))
-                            {
-                                significantCoefficients |= 1 << n;
-                                inferSbDcSigCoeffFlag = false;
-                            }
-                        }
-                        else
+                        if (cabac.read_sig_coeff_flag(picture,
+                            transformSkip, xC, yC,
+                            coded_sub_block_flag, cIdx, log2TrafoSize, scanIdx))
                         {
                             significantCoefficients |= 1 << n;
+                            inferSbDcSigCoeffFlag = false;
                         }
                     }
-
+                    else
+                    {
+                        significantCoefficients |= 1 << n;
+                    }
                 }
 
                 int firstSigScanPos = 16;
@@ -180,8 +168,6 @@ namespace Openize.Heic.Decoder
                 int lastGreater1ScanPos = -1;
                 int greaterThanOne = 0;
                 int greaterThanTwo = 0;
-                int[] coeff_abs_level_remaining = picture.Workspace.RemainingLevels;
-                Array.Clear(coeff_abs_level_remaining, 0, coeff_abs_level_remaining.Length);
 
                 firstCoeffInSubblock = true;
 
@@ -206,12 +192,6 @@ namespace Openize.Heic.Decoder
 
                             if (((greaterThanOne & (1 << n)) != 0) && lastGreater1ScanPos == -1)
                                 lastGreater1ScanPos = n;
-                            else if (((greaterThanOne & (1 << n)) != 0))
-                                escapeDataPresent = 1;
-                        }
-                        else
-                        {
-                            escapeDataPresent = 1;
                         }
 
                         if (lastSigScanPos == -1)
@@ -233,7 +213,7 @@ namespace Openize.Heic.Decoder
                     sps.sps_range_ext.implicit_rdpcm_enabled_flag &&
                     context.transform_skip_flag[cIdx] &&
                     ((int)predModeIntra == 10 || (int)predModeIntra == 26)) ||
-                    picture.explicit_rdpcm_flag[x0, y0][cIdx])
+                    explicitRdpcm)
                 {
                     signHidden = false;
                 }
@@ -247,7 +227,6 @@ namespace Openize.Heic.Decoder
                     if (cabac.read_coeff_abs_level_greater2_flag(cIdx, lastInvocation_ctxSet))
                     {
                         greaterThanTwo |= 1 << lastGreater1ScanPos;
-                        escapeDataPresent = 1;
                     }
                 }
 
@@ -255,7 +234,7 @@ namespace Openize.Heic.Decoder
                 for (int n = 15; n >= 0; n--)
                 {
                     if ((significantCoefficients & (1 << n)) != 0 &&
-                        (!header.pps.sign_data_hiding_enabled_flag || !signHidden || (n != firstSigScanPos)))
+                        (!signDataHiding || !signHidden || (n != firstSigScanPos)))
                     {
                         if (cabac.read_coeff_sign_flag())
                         {
@@ -273,7 +252,7 @@ namespace Openize.Heic.Decoder
                     sbType++;
 
                 int initRiceValue = cabac.StatCoeff[sbType] / 4;
-                if (!sps.sps_range_ext.persistent_rice_adaptation_enabled_flag) initRiceValue = 0;
+                if (!persistentRiceAdaptation) initRiceValue = 0;
 
                 int cLastAbsLevel = 0;
                 int cLastRiceParam = initRiceValue;
@@ -281,11 +260,11 @@ namespace Openize.Heic.Decoder
 
                 for (int n = 15; n >= 0; n--)
                 {
-                    xC = (xS << 2) + coefficientScan[n][0];
-                    yC = (yS << 2) + coefficientScan[n][1];
-
                     if ((significantCoefficients & (1 << n)) != 0)
                     {
+                        xC = (xS << 2) + coefficientScan[n][0];
+                        yC = (yS << 2) + coefficientScan[n][1];
+                        int remainingLevel = 0;
                         int baseLevel = 1 +
                             (((greaterThanOne & (1 << n)) != 0) ? 1 : 0) +
                             (((greaterThanTwo & (1 << n)) != 0) ? 1 : 0);
@@ -293,22 +272,22 @@ namespace Openize.Heic.Decoder
                         if (baseLevel == ((numSigCoeff < 8) ?
                             ((n == lastGreater1ScanPos) ? 3 : 2) : 1))
                         {
-                            coeff_abs_level_remaining[n] = cabac.read_coeff_abs_level_remaining(cLastRiceParam);
+                            remainingLevel = cabac.read_coeff_abs_level_remaining(cLastRiceParam);
 
                             // 9.3.3.11
-                            cLastAbsLevel = baseLevel + coeff_abs_level_remaining[n];
+                            cLastAbsLevel = baseLevel + remainingLevel;
                             cLastRiceParam += (cLastAbsLevel > (3 * (1 << cLastRiceParam)) ? 1 : 0);
 
-                            if (!sps.sps_range_ext.persistent_rice_adaptation_enabled_flag)
+                            if (!persistentRiceAdaptation)
                                 cLastRiceParam = Math.Min(cLastRiceParam, 4);
 
-                            if (sps.sps_range_ext.persistent_rice_adaptation_enabled_flag && firstInvoke)
+                            if (persistentRiceAdaptation && firstInvoke)
                             {
-                                if (coeff_abs_level_remaining[n] >= (3 << (cabac.StatCoeff[sbType] / 4)))
+                                if (remainingLevel >= (3 << (cabac.StatCoeff[sbType] / 4)))
                                 {
                                     cabac.StatCoeff[sbType]++;
                                 }
-                                else if (2 * coeff_abs_level_remaining[n] < (1 << (cabac.StatCoeff[sbType] / 4)) &&
+                                else if (2 * remainingLevel < (1 << (cabac.StatCoeff[sbType] / 4)) &&
                                     cabac.StatCoeff[sbType] > 0)
                                 {
                                     cabac.StatCoeff[sbType]--;
@@ -318,19 +297,16 @@ namespace Openize.Heic.Decoder
                             }
                         }
 
-                        TransCoeffLevel = (coeff_abs_level_remaining[n] + baseLevel) * (((coefficientSigns & (1 << n)) != 0) ? -1 : 1);
+                        TransCoeffLevel = (remainingLevel + baseLevel) * (((coefficientSigns & (1 << n)) != 0) ? -1 : 1);
 
-                        if (header.pps.sign_data_hiding_enabled_flag && signHidden)
+                        if (signDataHiding && signHidden)
                         {
-                            sumAbsLevel += (coeff_abs_level_remaining[n] + baseLevel);
+                            sumAbsLevel += (remainingLevel + baseLevel);
                             if ((n == firstSigScanPos) && ((sumAbsLevel % 2) == 1))
                                 TransCoeffLevel = -1 * TransCoeffLevel;
                         }
 
-                        if (cIdx == 0)
-                            picture.TransCoeffLevel[cIdx][x0 + xC, y0 + yC] = TransCoeffLevel;
-                        else
-                            picture.TransCoeffLevel[cIdx][x0 / sps.SubWidthC + xC, y0 / sps.SubHeightC + yC] = TransCoeffLevel;
+                        coefficients[coefficientBaseX + xC, coefficientBaseY + yC] = TransCoeffLevel;
 
                         numSigCoeff++;
                     }

@@ -49,8 +49,6 @@ namespace Openize.Heic.Decoder
         internal readonly bool[,][] cbf_cb;
         internal readonly bool[,][] cbf_cr;
         internal readonly bool[,][] cbf_luma;
-        internal readonly bool[,][] explicit_rdpcm_flag;
-        internal readonly bool[,][] explicit_rdpcm_dir_flag;
 
         internal PictureWorkspace(seq_parameter_set_rbsp sps)
         {
@@ -108,8 +106,6 @@ namespace Openize.Heic.Decoder
             cbf_cr = new bool[widthMax, heightMax][];
             cbf_luma = new bool[widthMax, heightMax][];
 
-            explicit_rdpcm_flag = new bool[widthMax, heightMax][];
-            explicit_rdpcm_dir_flag = new bool[widthMax, heightMax][];
             SliceAddrRs = new uint[sps.PicWidthInCtbsY, sps.PicHeightInCtbsY];
             SliceHeaderIndex = new int[widthMax, heightMax];
         }
@@ -176,8 +172,6 @@ namespace Openize.Heic.Decoder
             Array.Clear(cbf_cb, 0, cbf_cb.Length);
             Array.Clear(cbf_cr, 0, cbf_cr.Length);
             Array.Clear(cbf_luma, 0, cbf_luma.Length);
-            Array.Clear(explicit_rdpcm_flag, 0, explicit_rdpcm_flag.Length);
-            Array.Clear(explicit_rdpcm_dir_flag, 0, explicit_rdpcm_dir_flag.Length);
         }
     }
 }

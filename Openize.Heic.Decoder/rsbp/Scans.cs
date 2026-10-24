@@ -14,6 +14,13 @@ namespace Openize.Heic.Decoder
     {
         public static byte[][][][] ScanOrder {  get; private set; }
 
+        private static byte[][][] positionsByCoordinate;
+
+        internal static int GetScanPosition(int log2BlockSize, int scanIndex, int x, int y)
+        {
+            return positionsByCoordinate[log2BlockSize][scanIndex][(x << log2BlockSize) + y];
+        }
+
         private static bool _initialised = false;
 
         private static object _locker = new object();
@@ -31,6 +38,7 @@ namespace Openize.Heic.Decoder
         internal static void ScanOrderInitialize()
         {
             ScanOrder = new byte[6][][][];
+            positionsByCoordinate = new byte[4][][];
             for (int log2BlockSize = 0; log2BlockSize < 6; log2BlockSize++)
             {
                 ScanOrder[log2BlockSize] = new byte[4][][];
@@ -40,6 +48,19 @@ namespace Openize.Heic.Decoder
                     ScanOrder[log2BlockSize][0] = DiagonalScanInitialize((byte)(1 << log2BlockSize));
                     ScanOrder[log2BlockSize][1] = HorizontalScanInitialize((byte)(1 << log2BlockSize));
                     ScanOrder[log2BlockSize][2] = VerticalScanInitialize((byte)(1 << log2BlockSize));
+                    positionsByCoordinate[log2BlockSize] = new byte[3][];
+                    for (int scanIndex = 0; scanIndex < 3; scanIndex++)
+                    {
+                        byte[][] order = ScanOrder[log2BlockSize][scanIndex];
+                        byte[] positions = new byte[order.Length];
+                        for (int position = 0; position < order.Length; position++)
+                        {
+                            int x = order[position][0];
+                            int y = order[position][1];
+                            positions[(x << log2BlockSize) + y] = (byte)position;
+                        }
+                        positionsByCoordinate[log2BlockSize][scanIndex] = positions;
+                    }
                 }
 
                 if (log2BlockSize > 1)

@@ -494,7 +494,7 @@ namespace Openize.Heic.Decoder
             return DecodeFixedLengthBypass((last_significant_coeff_prefix >> 1) - 1);
         }
 
-        internal bool read_coded_sub_block_flag(uint xS, uint yS,
+        internal bool read_coded_sub_block_flag(int xS, int yS,
             bool[,] coded_sub_block_flag, int cIdx, int log2TrafoSize)
         {
             // FL cMax = 1

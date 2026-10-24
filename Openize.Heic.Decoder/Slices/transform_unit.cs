@@ -101,7 +101,7 @@ namespace Openize.Heic.Decoder
             }
 
             if (cbfLuma)
-                new residual_coding(stream, header, x0, y0, log2TrafoSize, 0);
+                ResidualDecoder.Decode(stream, header, x0, y0, log2TrafoSize, 0);
 
             Decode(stream, header.parentPicture, x0, y0, trafoDepth, log2TrafoSize, 0);
 
@@ -119,14 +119,14 @@ namespace Openize.Heic.Decoder
                         picture.ResScaleVal[1][x0, y0] = get_ResScaleVal(stream, 0);
 
                     if (picture.cbf_cb[x0, y0][trafoDepth])
-                        new residual_coding(stream, header, x0, y0, log2TrafoSizeC, 1);
+                        ResidualDecoder.Decode(stream, header, x0, y0, log2TrafoSizeC, 1);
 
                     Decode(stream, header.parentPicture, x0 / sps.SubWidthC, y0 / sps.SubHeightC, trafoDepth, log2TrafoSizeC, 1);
 
                     if (header.pps.sps.ChromaArrayType == 2)
                     {
                         if (picture.cbf_cb[x0, y0 + offset][trafoDepth])
-                            new residual_coding(stream, header, x0, y0 + offset, log2TrafoSizeC, 1);
+                            ResidualDecoder.Decode(stream, header, x0, y0 + offset, log2TrafoSizeC, 1);
 
                         Decode(stream, header.parentPicture, x0 / sps.SubWidthC, y0 / sps.SubHeightC + offset, trafoDepth, log2TrafoSizeC, 1);
                     }
@@ -136,14 +136,14 @@ namespace Openize.Heic.Decoder
                         picture.ResScaleVal[2][x0, y0] = get_ResScaleVal(stream, 1);
 
                     if (picture.cbf_cr[x0, y0][trafoDepth])
-                        new residual_coding(stream, header, x0, y0, log2TrafoSizeC, 2);
+                        ResidualDecoder.Decode(stream, header, x0, y0, log2TrafoSizeC, 2);
 
                     Decode(stream, header.parentPicture, x0 / sps.SubWidthC, y0 / sps.SubHeightC, trafoDepth, log2TrafoSizeC, 2);
 
                     if (header.pps.sps.ChromaArrayType == 2)
                     {
                         if (picture.cbf_cr[x0, y0 + offset][trafoDepth])
-                            new residual_coding(stream, header, x0, y0 + offset, log2TrafoSizeC, 2);
+                            ResidualDecoder.Decode(stream, header, x0, y0 + offset, log2TrafoSizeC, 2);
 
                         Decode(stream, header.parentPicture, x0 / sps.SubWidthC, y0 / sps.SubHeightC + offset, trafoDepth, log2TrafoSizeC, 2);
                     }
@@ -152,28 +152,28 @@ namespace Openize.Heic.Decoder
                 {
                     // Cb
                     if (picture.cbf_cb[xBase, yBase][trafoDepth - 1])
-                        new residual_coding(stream, header, xBase, yBase, log2TrafoSize, 1);
+                        ResidualDecoder.Decode(stream, header, xBase, yBase, log2TrafoSize, 1);
 
                     Decode(stream, header.parentPicture, xBase / sps.SubWidthC, yBase / sps.SubHeightC, trafoDepth, log2TrafoSize, 1);
 
                     if (header.pps.sps.ChromaArrayType == 2)
                     {
                         if (picture.cbf_cb[xBase, yBase + offset][trafoDepth - 1])
-                            new residual_coding(stream, header, xBase, yBase + offset, log2TrafoSize, 1);
+                            ResidualDecoder.Decode(stream, header, xBase, yBase + offset, log2TrafoSize, 1);
 
                         Decode(stream, header.parentPicture, xBase / sps.SubWidthC, yBase / sps.SubHeightC + offset, trafoDepth, log2TrafoSize, 1);
                     }
 
                     // Cr
                     if (picture.cbf_cr[xBase, yBase][trafoDepth - 1])
-                        new residual_coding(stream, header, xBase, yBase, log2TrafoSize, 2);
+                        ResidualDecoder.Decode(stream, header, xBase, yBase, log2TrafoSize, 2);
 
                     Decode(stream, header.parentPicture, xBase / sps.SubWidthC, yBase / sps.SubHeightC, trafoDepth, log2TrafoSize, 2);
 
                     if (header.pps.sps.ChromaArrayType == 2)
                     {
                         if (picture.cbf_cr[xBase, yBase + offset][trafoDepth - 1])
-                            new residual_coding(stream, header, xBase, yBase + offset, log2TrafoSize, 2);
+                            ResidualDecoder.Decode(stream, header, xBase, yBase + offset, log2TrafoSize, 2);
 
                         Decode(stream, header.parentPicture, xBase / sps.SubWidthC, yBase / sps.SubHeightC + offset, trafoDepth, log2TrafoSize, 2);
                     }
