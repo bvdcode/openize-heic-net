@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Openize.HEIC 
  * Copyright (c) 2024-2026 Openize Pty Ltd. 
  *
@@ -431,7 +431,10 @@ namespace Openize.Heic.Decoder
             if (rgba == null)
                 return null;
 
-            rgba = TransformImage(rgba);
+            if (ImageType != ImageFrameType.grid)
+            {
+                rgba = TransformImage(rgba);
+            }
 
             rgba = AddAlphaLayer(rgba, boundsRectangle, workspace);
 
@@ -576,7 +579,9 @@ namespace Openize.Heic.Decoder
             var localHeight = (uint)GetByteFromIdatField(databox, 4 + gridFieldLength, gridFieldLength);
 
             uint[] derived = parent.Header.GetDerivedList(id);
-            RgbaImage output = new RgbaImage((int)localWidth, (int)localHeight);
+            RgbaOrientation orientation = new RgbaOrientation((int)localWidth, (int)localHeight,
+                imageRotationAngle, imageMirrorAxis);
+            RgbaImage output = new RgbaImage(orientation.Width, orientation.Height);
             int tileCount = (rows + 1) * (columns + 1);
 
             Action<int, TileDecoderWorkspace> decodeTile = (index, tileWorkspace) =>
@@ -586,7 +591,7 @@ namespace Openize.Heic.Decoder
                 HeicImageFrame frame = parent.AllFrames[derived[index]];
                 RgbaImage framePixels = frame.GetRgbaImage(new Rectangle(0, 0, (int)frame.Width, (int)frame.Height), tileWorkspace);
 
-                framePixels.CopyTo(output, new Rectangle(checked(column * (int)frame.Width),
+                orientation.CopyTo(framePixels, output, new Rectangle(checked(column * (int)frame.Width),
                     checked(row * (int)frame.Height), (int)frame.Width, (int)frame.Height));
                 tileWorkspace.ReturnRgbaImage(framePixels);
             };
