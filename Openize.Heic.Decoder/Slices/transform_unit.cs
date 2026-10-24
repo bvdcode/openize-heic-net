@@ -300,7 +300,8 @@ namespace Openize.Heic.Decoder
                     Math.Abs(p[-1, -1] + p[nTbS * 2 - 1, -1] - 2 * p[nTbS - 1, -1]) < (1 << (picture.sps.BitDepthY - 5)) &&
                     Math.Abs(p[-1, -1] + p[-1, nTbS * 2 - 1] - 2 * p[-1, nTbS - 1]) < (1 << (picture.sps.BitDepthY - 5));
 
-                var pF = new NeighbouringSamples(nTbS);
+                NeighbouringSamples pF = picture.Workspace.FilteredNeighbours;
+                pF.SetSize(nTbS);
 
                 if (biIntFlag)
                 {

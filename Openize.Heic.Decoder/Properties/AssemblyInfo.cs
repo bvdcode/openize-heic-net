@@ -18,3 +18,5 @@ using System.Reflection;
 
 [assembly: AssemblyVersion("26.9.0")]
 [assembly: AssemblyFileVersion("26.9.0")]
+
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Openize.Heic.Tests")]

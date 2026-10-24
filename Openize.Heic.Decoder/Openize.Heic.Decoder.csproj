@@ -92,6 +92,8 @@
     <Compile Include="Slices\coding_unit.cs" />
     <Compile Include="Slices\inter_pred_idc.cs" />
     <Compile Include="Slices\NeighbouringSamples.cs" />
+    <Compile Include="Slices\NeighbouringSamplesTemplate.cs" />
+    <Compile Include="Slices\NeighbouringSamplesAvailability.cs" />
     <Compile Include="Slices\NeighbouringSamplesGenerator.cs" />
     <Compile Include="Slices\palette_coding.cs" />
     <Compile Include="Slices\PartMode.cs" />

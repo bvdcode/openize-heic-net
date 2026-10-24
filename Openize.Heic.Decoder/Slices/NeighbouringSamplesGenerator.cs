@@ -10,7 +10,7 @@
 
 namespace Openize.Heic.Decoder
 {
-    internal class NeighbouringSamplesGenerator
+    internal struct NeighbouringSamplesGenerator
     {
         bool availableLeft;
         bool availableTop;
@@ -38,7 +38,7 @@ namespace Openize.Heic.Decoder
         //int nRight;
         //int nAvail;
 
-        NeighbouringSamplesGenerator(HeicPicture picture, int x0, int y0, int nTbS, int cIdx)
+        NeighbouringSamplesGenerator(HeicPicture picture, int x0, int y0, int nTbS, int cIdx) : this()
         {
             this.picture = picture;
             this.x0 = x0;
@@ -135,8 +135,10 @@ namespace Openize.Heic.Decoder
                 yBLuma >> picture.sps.MinTbLog2SizeY];
 
 
-            var samples = new NeighbouringSamples(nTbS);
-            var available = new NeighbouringSamplesAvaliablity(nTbS);
+            NeighbouringSamples samples = picture.Workspace.Neighbours;
+            samples.SetSize(nTbS);
+            NeighbouringSamplesAvailability available = picture.Workspace.NeighbourAvailability;
+            available.Reset(nTbS);
 
             if (availableLeft)
             {
@@ -294,9 +296,7 @@ namespace Openize.Heic.Decoder
 
         public static NeighbouringSamples Generate(HeicPicture picture, int x0, int y0, int nTbS, int cIdx)
         {
-            NeighbouringSamples samples = new NeighbouringSamples(nTbS);
-
-            var gen = new NeighbouringSamplesGenerator(picture, x0, y0, nTbS, cIdx);
+            NeighbouringSamplesGenerator gen = new NeighbouringSamplesGenerator(picture, x0, y0, nTbS, cIdx);
             gen.CalculateFlags();
             return gen.FillNeighbouringSamples();
         }

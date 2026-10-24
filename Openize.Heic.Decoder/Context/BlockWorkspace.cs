@@ -16,6 +16,9 @@ namespace Openize.Heic.Decoder
         private const int CoefficientsPerSubBlock = 16;
         private const int MaximumSubBlocksPerDimension = MaximumTransformSize / 4;
 
+        internal NeighbouringSamples Neighbours { get; } = new NeighbouringSamples(MaximumTransformSize);
+        internal NeighbouringSamples FilteredNeighbours { get; } = new NeighbouringSamples(MaximumTransformSize);
+        internal NeighbouringSamplesAvailability NeighbourAvailability { get; } = new NeighbouringSamplesAvailability(MaximumTransformSize);
         internal int[,] Predicted { get; } = new int[MaximumTransformSize, MaximumTransformSize];
         internal int[,] Scaled { get; } = new int[MaximumTransformSize, MaximumTransformSize];
         internal int[,] Intermediate { get; } = new int[MaximumTransformSize, MaximumTransformSize];

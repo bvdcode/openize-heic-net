@@ -10,45 +10,18 @@
 
 namespace Openize.Heic.Decoder
 {
-    internal class NeighbouringSamplesTemplate<T>
-    {
-        protected T[] data;
-        protected int size;
-
-        public NeighbouringSamplesTemplate(int nTbS)
-        {
-            data = new T[4 * nTbS + 1];
-            size = nTbS;
-        }
-
-        public T this[int x, int y]
-        {
-            get => data[getIndex(x, y)];
-            set => data[getIndex(x, y)] = value;
-        }
-
-        protected int getIndex(int x, int y)
-        {
-            if (y == -1)
-                return x + 1;
-            else
-                return 2 * size + y + 1;
-        }
-    }
-
     internal class NeighbouringSamples : NeighbouringSamplesTemplate<ushort>
     {
-        public NeighbouringSamples(int nTbS) : base(nTbS) { }
+        public NeighbouringSamples(int maximumSize) : base(maximumSize) { }
 
         public void Reset(int bitDepth)
         {
-            var value = 1 << (bitDepth - 1);
-            for (int i = 0; i < data.Length; i++)
-                data[i] = (ushort)value;
+            ushort value = (ushort)(1 << (bitDepth - 1));
+            int length = 4 * size + 1;
+            for (int i = 0; i < length; i++)
+            {
+                data[i] = value;
+            }
         }
-    }
-    internal class NeighbouringSamplesAvaliablity : NeighbouringSamplesTemplate<bool>
-    {
-        public NeighbouringSamplesAvaliablity(int nTbS) : base(nTbS) { }
     }
 }
