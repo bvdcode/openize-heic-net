@@ -20,7 +20,7 @@ namespace Openize.Heic.Decoder.IO
     /// The BitStreamWithNalSupport class is designed to read bits from a specified stream.
     /// It allows to ignore specified byte sequences while reading.
     /// </summary>
-    internal class BitStreamWithNalSupport : BitStreamReader
+    internal class BitStreamWithNalSupport : BitStreamReader, IDisposable
     {
         /// <summary>
         /// Context-adaptive arithmetic entropy-decoder. 
@@ -61,6 +61,46 @@ namespace Openize.Heic.Decoder.IO
             if (!ContextDictionary.ContainsKey(imageId))
                 ContextDictionary.Add(imageId, new DecoderContext());
             CurrentImageId = imageId;
+        }
+
+        internal BitStreamWithNalSupport CreateFrameReader(uint imageId, long offset, long length)
+        {
+            lock (ContextDictionary)
+            {
+                if (offset < 0 || offset > stream.Length)
+                {
+                    throw new EndOfStreamException("Image frame offset exceeds total stream length.");
+                }
+
+                if (length < 0 || length > stream.Length - offset)
+                {
+                    throw new EndOfStreamException("Image frame data exceeds total stream length.");
+                }
+
+                byte[] bytes = new byte[checked((int)length)];
+                SetBytePosition(offset);
+                int position = 0;
+                while (position < bytes.Length)
+                {
+                    int read = stream.Read(bytes, position, bytes.Length - position);
+                    if (read == 0)
+                    {
+                        throw new EndOfStreamException("Image frame data is truncated.");
+                    }
+                    position += read;
+                }
+
+                BitStreamWithNalSupport reader = new BitStreamWithNalSupport(new MemoryStream(bytes, false));
+                reader.ContextDictionary.Add(imageId, ContextDictionary[imageId]);
+                reader.CurrentImageId = imageId;
+                ContextDictionary.Remove(imageId);
+                return reader;
+            }
+        }
+
+        public void Dispose()
+        {
+            stream.Dispose();
         }
 
         /// <summary>

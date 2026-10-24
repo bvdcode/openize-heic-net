@@ -1052,16 +1052,22 @@
             Dictionary of Heic image frames.
             </summary>
         </member>
-        <member name="M:Openize.Heic.Decoder.HeicImage.#ctor(Openize.Heic.Decoder.HeicHeader,Openize.Heic.Decoder.IO.BitStreamWithNalSupport)">
+        <member name="M:Openize.Heic.Decoder.HeicImage.#ctor(Openize.Heic.Decoder.HeicHeader,Openize.Heic.Decoder.IO.BitStreamWithNalSupport,System.Int32)">
             <summary>
             Create heic image object.
             </summary>
             <param name="header">File header.</param>
             <param name="stream">File stream.</param>
+            <param name="maximumDecodingThreads">Maximum grid decoding concurrency.</param>
         </member>
         <member name="P:Openize.Heic.Decoder.HeicImage.Header">
             <summary>
             Heic image header. Grants convinient access to IsoBmff container meta data.
+            </summary>
+        </member>
+        <member name="P:Openize.Heic.Decoder.HeicImage.MaximumDecodingThreads">
+            <summary>
+            Maximum number of grid tiles decoded concurrently.
             </summary>
         </member>
         <member name="P:Openize.Heic.Decoder.HeicImage.Frames">
@@ -1102,6 +1108,14 @@
             </summary>
             <param name="stream">File stream.</param>
             <returns>Returns a heic image object with meta data read.</returns>
+        </member>
+        <member name="M:Openize.Heic.Decoder.HeicImage.Load(System.IO.Stream,System.Int32)">
+            <summary>
+            Loads image metadata and sets the grid decoding concurrency limit.
+            </summary>
+            <param name="stream">The source stream, which must remain open while decoding.</param>
+            <param name="maximumDecodingThreads">A positive limit; use one for sequential decoding.</param>
+            <returns>The loaded image.</returns>
         </member>
         <member name="M:Openize.Heic.Decoder.HeicImage.CanLoad(System.IO.Stream)">
             <summary>

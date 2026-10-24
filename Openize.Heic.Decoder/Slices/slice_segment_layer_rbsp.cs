@@ -59,7 +59,6 @@ namespace Openize.Heic.Decoder
 
             slice_header.slice_index = currentPicture.SliceHeaders.Count;
             currentPicture.SliceHeaders.Add(slice_header.slice_index, slice_header);
-            Scaling.Initiate(currentPicture.sps);
 
             stream.Context.DecodingPictureOrderCount(currentPicture);
 

@@ -30,7 +30,7 @@ namespace Openize.Heic.Decoder
         // 0, 1, 2, 3   MODE_INTER  1 (Cb)  4
         // 0, 1, 2, 3   MODE_INTER  2 (Cr)  5
 
-        internal static int[][][,] ScalingFactor { get; private set; }
+        internal int[][][,] ScalingFactor { get; }
 
         static readonly int[] scaling_list_4x4 = {
             16,16,16,16,
@@ -61,15 +61,9 @@ namespace Openize.Heic.Decoder
             41,41,54,54,54,71,71,91
         };
 
-        private static object _locker = new object();
-
-        internal static void Initiate(seq_parameter_set_rbsp sps)
+        internal Scaling(seq_parameter_set_rbsp sps)
         {
-            lock (_locker)
-            {
-                if (ScalingFactor != null) return;
-                ScalingFactor = new int[4][][,];
-            }
+            ScalingFactor = new int[4][][,];
 
             for (int i = 0; i < 4; i++)
                 ScalingFactor[i] = new int[6][,];

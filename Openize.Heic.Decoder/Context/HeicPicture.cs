@@ -17,6 +17,8 @@ namespace Openize.Heic.Decoder
     {
         internal BlockWorkspace Workspace { get; } = new BlockWorkspace();
 
+        internal Scaling Scaling { get; }
+
         public Dictionary<int, slice_segment_header> SliceHeaders { get; }
         public Dictionary<int, slice_segment_data> SliceUnits { get; }
 
@@ -85,6 +87,7 @@ namespace Openize.Heic.Decoder
             pps = slice_header.pps;
             sps = pps.sps;
             vps = sps.vps;
+            Scaling = new Scaling(sps);
             NalHeader = nal_header;
 
             uint widthMax = sps.pic_width_in_luma_samples;

@@ -640,7 +640,7 @@ namespace Openize.Heic.Decoder
                     }
                     else
                     {
-                        scale = Scaling.ScalingFactor[sizeId][matrixId][x, y];
+                        scale = picture.Scaling.ScalingFactor[sizeId][matrixId][x, y];
                     }
 
 

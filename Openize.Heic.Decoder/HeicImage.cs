@@ -40,8 +40,10 @@ namespace Openize.Heic.Decoder
         /// </summary>
         /// <param name="header">File header.</param>
         /// <param name="stream">File stream.</param>
-        private HeicImage(HeicHeader header, BitStreamWithNalSupport stream)
+        /// <param name="maximumDecodingThreads">Maximum grid decoding concurrency.</param>
+        private HeicImage(HeicHeader header, BitStreamWithNalSupport stream, int maximumDecodingThreads)
         {
+            MaximumDecodingThreads = maximumDecodingThreads;
             this.Header = header;
             this._stream = stream;
 
@@ -58,6 +60,11 @@ namespace Openize.Heic.Decoder
         /// Heic image header. Grants convinient access to IsoBmff container meta data.
         /// </summary>
         public HeicHeader Header { get; private set; }
+
+        /// <summary>
+        /// Maximum number of grid tiles decoded concurrently.
+        /// </summary>
+        public int MaximumDecodingThreads { get; }
 
         /// <summary>
         /// Dictionary of public Heic image frames with access by identifier.
@@ -139,6 +146,22 @@ namespace Openize.Heic.Decoder
         /// <returns>Returns a heic image object with meta data read.</returns>
         public static HeicImage Load(Stream stream)
         {
+            return Load(stream, Environment.ProcessorCount);
+        }
+
+        /// <summary>
+        /// Loads image metadata and sets the grid decoding concurrency limit.
+        /// </summary>
+        /// <param name="stream">The source stream, which must remain open while decoding.</param>
+        /// <param name="maximumDecodingThreads">A positive limit; use one for sequential decoding.</param>
+        /// <returns>The loaded image.</returns>
+        public static HeicImage Load(Stream stream, int maximumDecodingThreads)
+        {
+            if (maximumDecodingThreads < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(maximumDecodingThreads));
+            }
+
             if (!CanLoad(stream))
             {
                 throw new Exception("Not a HEIC image.");
@@ -158,7 +181,7 @@ namespace Openize.Heic.Decoder
                 var box = Box.ParseBox(bitstream);
 
                 if (box.type == BoxType.meta)
-                    return new HeicImage(new HeicHeader(box as MetaBox), bitstream);
+                    return new HeicImage(new HeicHeader(box as MetaBox), bitstream, maximumDecodingThreads);
             }
 
             throw new EndOfStreamException("Meta box not found.");

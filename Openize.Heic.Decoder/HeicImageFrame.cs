@@ -14,6 +14,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Openize.Heic.Decoder
 {
@@ -31,6 +32,7 @@ namespace Openize.Heic.Decoder
         private HeicImage parent;
         private BitStreamWithNalSupport stream;
         private bool cashed;
+        private readonly object decodeLock = new object();
 
         private uint ispeWidth;
         private uint ispeHeight;
@@ -439,8 +441,7 @@ namespace Openize.Heic.Decoder
             switch (ImageType)
             {
                 case ImageFrameType.hvc1:
-                    if (!cashed)
-                        LoadHvcRawPixels();
+                    LoadHvcRawPixels();
 
                     var converter = new YuvConverter(this);
                     rgba = converter.GetRgbaByteArray();
@@ -595,34 +596,33 @@ namespace Openize.Heic.Decoder
 
         private void LoadHvcRawPixels()
         {
-            stream.CurrentImageId = id;
-
-            if (locationBox.base_offset + locationBox.extents[0].offset > stream.Length)
-                throw new EndOfStreamException("Image frame offset exceeds total stream length.");
-
-            stream.SetBytePosition(locationBox.base_offset + locationBox.extents[0].offset);
-
-            var end = locationBox.base_offset + locationBox.extents[0].offset + locationBox.extents[0].length;
-
-            while (stream.GetBitPosition()/8 < end)
+            lock (decodeLock)
             {
-                NalUnit.ParseUnit(stream);
-            }
+                if (cashed)
+                {
+                    return;
+                }
 
-            if (stream.Context.Pictures.ContainsKey(id))
-            {
-                rawPixels = stream.Context.Pictures[id].pixels;
-                rawPixelsHighColorRange = stream.Context.Pictures[id].pixels_high_color_range;
-            }
-            else
-            {
-                rawPixels = null;
-                rawPixelsHighColorRange = null;
-                throw new EntryPointNotFoundException($"Image #{id} was not loaded [NalUnit not found].");
-            }
+                long offset = checked(locationBox.base_offset + locationBox.extents[0].offset);
+                long length = locationBox.extents[0].length;
+                using (BitStreamWithNalSupport reader = stream.CreateFrameReader(id, offset, length))
+                {
+                    while (reader.GetBitPosition() / 8 < (ulong)length)
+                    {
+                        NalUnit.ParseUnit(reader);
+                    }
 
-            cashed = true;
-            stream.DeleteImageContext(id);
+                    if (!reader.Context.Pictures.TryGetValue(id, out HeicPicture picture))
+                    {
+                        throw new EntryPointNotFoundException($"Image #{id} was not loaded [NalUnit not found].");
+                    }
+
+                    rawPixels = picture.pixels;
+                    rawPixelsHighColorRange = picture.pixels_high_color_range;
+                    reader.DeleteImageContext(id);
+                    cashed = true;
+                }
+            }
         }
 
         private byte[,,] GetByteArrayForGrid(byte[] databox)
@@ -635,35 +635,46 @@ namespace Openize.Heic.Decoder
             var localWidth = (uint)GetByteFromIdatField(databox, 4, gridFieldLength);
             var localHeight = (uint)GetByteFromIdatField(databox, 4 + gridFieldLength, gridFieldLength);
 
-            int index = 0;
-            var derived = parent.Header.GetDerivedList(id);
-
-            HeicImageFrame frame;
-            byte[,,] framePixels;
+            uint[] derived = parent.Header.GetDerivedList(id);
             byte[,,] output = new byte[localWidth, localHeight, 4];
+            int tileCount = (rows + 1) * (columns + 1);
 
-            for (int i = 0; i <= rows; i++)
+            Action<int> decodeTile = index =>
             {
-                for (int j = 0; j <= columns; j++)
-                {
-                    index = i * (columns + 1) + j;
-                    frame = parent.AllFrames[derived[index]];
-                    framePixels = frame.GetMultidimArray(new Rectangle(0, 0, (int)frame.Width, (int)frame.Height));
+                int row = index / (columns + 1);
+                int column = index % (columns + 1);
+                HeicImageFrame frame = parent.AllFrames[derived[index]];
+                byte[,,] framePixels = frame.GetMultidimArray(new Rectangle(0, 0, (int)frame.Width, (int)frame.Height));
 
-                    for (int l = 0; l < frame.Width; l++)
+                for (int x = 0; x < frame.Width; x++)
+                {
+                    for (int y = 0; y < frame.Height; y++)
                     {
-                        for (int k = 0; k < frame.Height; k++)
+                        if (column * frame.Width + x < localWidth && row * frame.Height + y < localHeight)
                         {
-                            if (j * frame.Width + l < localWidth && i * frame.Height + k < localHeight)
-                            {
-                                output[j * frame.Width + l, i * frame.Height + k, 0] = framePixels[l, k, 0];
-                                output[j * frame.Width + l, i * frame.Height + k, 1] = framePixels[l, k, 1];
-                                output[j * frame.Width + l, i * frame.Height + k, 2] = framePixels[l, k, 2];
-                                output[j * frame.Width + l, i * frame.Height + k, 3] = framePixels[l, k, 3];
-                            }
+                            output[column * frame.Width + x, row * frame.Height + y, 0] = framePixels[x, y, 0];
+                            output[column * frame.Width + x, row * frame.Height + y, 1] = framePixels[x, y, 1];
+                            output[column * frame.Width + x, row * frame.Height + y, 2] = framePixels[x, y, 2];
+                            output[column * frame.Width + x, row * frame.Height + y, 3] = framePixels[x, y, 3];
                         }
                     }
                 }
+            };
+
+            if (parent.MaximumDecodingThreads == 1 || tileCount == 1)
+            {
+                for (int index = 0; index < tileCount; index++)
+                {
+                    decodeTile(index);
+                }
+            }
+            else
+            {
+                ParallelOptions options = new ParallelOptions
+                {
+                    MaxDegreeOfParallelism = parent.MaximumDecodingThreads
+                };
+                Parallel.For(0, tileCount, options, decodeTile);
             }
             return output;
         }

@@ -23,10 +23,9 @@ namespace Openize.Heic.Decoder
             lock (_locker)
             {
                 if (_initialised) return;
+                ScanOrderInitialize();
                 _initialised = true;
             }
-
-            ScanOrderInitialize();
         }
 
         internal static void ScanOrderInitialize()

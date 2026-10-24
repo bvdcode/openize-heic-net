@@ -184,9 +184,9 @@ namespace Openize.Heic.Tests
         [Test]
         public void TestParallelProcessing()
         {
-            Task t1 = Task.Run(() => Read(Path.Combine(SamplesPath, "nokia", "grid_960x640.HEIC")));
-            Task t2 = Task.Run(() => Read(Path.Combine(SamplesPath, "nokia", "overlay_1000x680.HEIC")));
-            Task t3 = Task.Run(() => Read(Path.Combine(SamplesPath, "nokia", "random_collection_1440x960.HEIC")));
+            Task t1 = Task.Run(() => Read(Path.Combine(SamplesPath, "nokia", "grid_960x640.heic")));
+            Task t2 = Task.Run(() => Read(Path.Combine(SamplesPath, "nokia", "overlay_1000x680.heic")));
+            Task t3 = Task.Run(() => Read(Path.Combine(SamplesPath, "nokia", "random_collection_1440x960.heic")));
 
             Task.WaitAll(t1, t2, t3);
 
@@ -236,7 +236,7 @@ namespace Openize.Heic.Tests
         [TestCase(128, typeof(EndOfStreamException), "Isobmff meta box is truncated.")]
         [TestCase(256, typeof(EndOfStreamException), "Isobmff meta box is truncated.")]
 
-        [TestCase(1024, typeof(DataMisalignedException), "Unexpected slice-end bit!")] // image frame data truncated
+        [TestCase(1024, typeof(EndOfStreamException), "Image frame data exceeds total stream length.")] // image frame data truncated
         public void TruncatedTest(int bytesToRead, Type expectedExceptionType, string expectedMessageSubstring)
         {
             byte[] truncated = new byte[bytesToRead];
