@@ -729,14 +729,14 @@ namespace Openize.Heic.Decoder
             return y;
         }
 
-        readonly private int[,] transMatrix4x4 = {
+        static readonly private int[,] transMatrix4x4 = {
             { 29, 55, 74, 84 },
             { 74, 74,  0,-74 },
             { 84,-29,-74, 55 },
             { 55,-84, 74,-29 }
         };
 
-        readonly private int[,] transMatrix32x32 = {
+        static readonly private int[,] transMatrix32x32 = {
             { 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64},
             { 90, 90, 88, 85, 82, 78, 73, 67, 61, 54, 46, 38, 31, 22, 13,  4, -4,-13,-22,-31,-38,-46,-54,-61,-67,-73,-78,-82,-85,-88,-90,-90},
             { 90, 87, 80, 70, 57, 43, 25,  9, -9,-25,-43,-57,-70,-80,-87,-90,-90,-87,-80,-70,-57,-43,-25, -9,  9, 25, 43, 57, 70, 80, 87, 90},
@@ -771,17 +771,17 @@ namespace Openize.Heic.Decoder
             {  4,-13, 22,-31, 38,-46, 54,-61, 67,-73, 78,-82, 85,-88, 90,-90, 90,-90, 88,-85, 82,-78, 73,-67, 61,-54, 46,-38, 31,-22, 13, -4}
         };
 
-        readonly private int[] levelScale = { 40, 45, 51, 57, 64, 72 };
+        static readonly private int[] levelScale = { 40, 45, 51, 57, 64, 72 };
 
         // Table 8-5
-        readonly private int[] intraPredAngleTable =
+        static readonly private int[] intraPredAngleTable =
         { 
             0, 0, 32, 26, 21, 17, 13, 9, 5, 2, 0, -2, -5, -9, -13, -17, -21, -26,
             -32, -26, -21, -17, -13, -9, -5, -2, 0, 2, 5, 9, 13, 17, 21, 26, 32
         };
 
         // Table 8-6 further specifies the mapping table between predModeIntra and the inverse angle parameter invAngle.
-        readonly private int[] invAngleTable =
+        static readonly private int[] invAngleTable =
         { 
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
             -4096, -1638, -910, -630, -482, -390, -315, -256,
