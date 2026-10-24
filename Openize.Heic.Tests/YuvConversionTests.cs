@@ -80,7 +80,11 @@ namespace Openize.Heic.Tests
             }
 
             byte[] expected = ConvertReference(source, sps, matrix);
-            byte[] actual = new YuvConverter(frame).GetRgbaImage().Pixels;
+            TileDecoderWorkspace workspace = new TileDecoderWorkspace();
+            RgbaImage previous = workspace.RentRgbaImage(Width, Height);
+            Array.Fill(previous.Pixels, byte.MaxValue);
+            workspace.ReturnRgbaImage(previous);
+            byte[] actual = new YuvConverter(frame).GetRgbaImage(workspace).Pixels;
             Assert.That(actual.AsSpan().SequenceEqual(expected), Is.True,
                 $"Depth {lumaDepth}/{chromaDepth}, chroma {chromaFormat}, full range {fullRange}, matrix {matrix}");
         }

@@ -411,7 +411,7 @@ namespace Openize.Heic.Decoder
                     LoadHvcRawPixels(workspace);
 
                     var converter = new YuvConverter(this);
-                    rgba = converter.GetRgbaImage();
+                    rgba = converter.GetRgbaImage(workspace);
                     break;
                 case ImageFrameType.iden:
                     var derived = parent.Header.GetDerivedList(id);
@@ -588,6 +588,7 @@ namespace Openize.Heic.Decoder
 
                 framePixels.CopyTo(output, new Rectangle(checked(column * (int)frame.Width),
                     checked(row * (int)frame.Height), (int)frame.Width, (int)frame.Height));
+                tileWorkspace.ReturnRgbaImage(framePixels);
             };
 
             if (workspace is null)
@@ -670,6 +671,7 @@ namespace Openize.Heic.Decoder
 
                 framePixels.CopyTo(output, new Rectangle(horizontal_offset[i], vertical_offset[i],
                     (int)frame.Width, (int)frame.Height));
+                workspace?.ReturnRgbaImage(framePixels);
             }
             return output;
         }

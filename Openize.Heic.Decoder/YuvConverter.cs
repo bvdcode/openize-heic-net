@@ -48,16 +48,17 @@ namespace Openize.Heic.Decoder
         /// Convert YUV samples to RGBA pixels.
         /// </summary>
         /// <returns>RGBA pixels.</returns>
-        public RgbaImage GetRgbaImage()
+        public RgbaImage GetRgbaImage(TileDecoderWorkspace workspace = null)
         {
             seq_parameter_set_rbsp sps = picture.hvcConfig.SPS;
             int width = (int)sps.pic_width_in_luma_samples;
             int height = (int)sps.pic_height_in_luma_samples;
-            RgbaImage image = new RgbaImage(width, height);
+            RgbaImage image = workspace is null ? new RgbaImage(width, height) : workspace.RentRgbaImage(width, height);
             byte[] pixels = image.Pixels;
 
             if (picture.rawPixels is null && picture.rawPixelsHighColorRange is null)
             {
+                System.Array.Clear(pixels, 0, pixels.Length);
                 return image;
             }
 
