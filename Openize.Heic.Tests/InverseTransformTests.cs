@@ -1,6 +1,7 @@
 /*
  * Openize.HEIC
  * Copyright (c) 2024-2026 Openize Pty Ltd.
+ * Copyright (c) 2026 Vadim Belov.
  *
  * This file is part of Openize.HEIC.
  *
@@ -41,7 +42,7 @@ namespace Openize.Heic.Tests
                             (int)random.NextInt64(int.MinValue, (long)int.MaxValue + 1)
                     };
                 }
-                InverseTransform.Apply(input, output, size, matrix, sine);
+                InverseTransform.Apply(input, output, size, sine);
                 for (int i = 0; i < size; i++)
                 {
                     int expected = 0;
