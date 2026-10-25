@@ -1,6 +1,7 @@
 ﻿/*
  * Openize.HEIC 
- * Copyright (c) 2024-2026 Openize Pty Ltd. 
+ * Copyright (c) 2024-2026 Openize Pty Ltd.
+ * Copyright (c) 2026 Vadim Belov.
  *
  * This file is part of Openize.HEIC.
  *
@@ -13,13 +14,15 @@ namespace Openize.Heic.Decoder
     internal class BlockWorkspace
     {
         private const int MaximumTransformSize = 32;
-        private const int MaximumSubBlocksPerDimension = MaximumTransformSize / 4;
+        private const int SubBlockSize = 4;
+        private const int MaximumSubBlocksPerDimension = MaximumTransformSize / SubBlockSize;
 
         internal NeighbouringSamples Neighbours { get; } = new NeighbouringSamples(MaximumTransformSize);
         internal NeighbouringSamples FilteredNeighbours { get; } = new NeighbouringSamples(MaximumTransformSize);
         internal NeighbouringSamplesAvailability NeighbourAvailability { get; } = new NeighbouringSamplesAvailability(MaximumTransformSize);
         internal IntraPredMode[] IntraPredModeCandidates { get; } = new IntraPredMode[3];
         internal int[,] Predicted { get; } = new int[MaximumTransformSize, MaximumTransformSize];
+        internal int[] SignificantPositions { get; } = new int[SubBlockSize * SubBlockSize];
         internal int[] Coefficients { get; } = new int[MaximumTransformSize * MaximumTransformSize];
         internal int[] Scaled { get; } = new int[MaximumTransformSize * MaximumTransformSize];
         internal int[] Intermediate { get; } = new int[MaximumTransformSize * MaximumTransformSize];

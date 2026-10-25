@@ -1,6 +1,7 @@
 ﻿/*
  * Openize.HEIC 
- * Copyright (c) 2024-2026 Openize Pty Ltd. 
+ * Copyright (c) 2024-2026 Openize Pty Ltd.
+ * Copyright (c) 2026 Vadim Belov.
  *
  * This file is part of Openize.HEIC.
  *
@@ -99,6 +100,7 @@ namespace Openize.Heic.Decoder
             bool signDataHiding = pps.sign_data_hiding_enabled_flag;
             int transformSize = 1 << log2TrafoSize;
             int[] coefficients = picture.Workspace.Coefficients;
+            int[] significantPositions = picture.Workspace.SignificantPositions;
             Array.Clear(coefficients, 0, transformSize * transformSize);
             int xS, yS, xC, yC;
 
@@ -108,14 +110,13 @@ namespace Openize.Heic.Decoder
             int lastInvocation_greater1Ctx = 0;
             bool lastInvocation_coeff_abs_level_greater1_flag = false;
             bool firstSubblock = true;
-            bool firstCoeffInSubblock;
 
             for (int i = lastSubBlock; i >= 0; i--)
             {
                 xS = subBlockScan[i][0];
                 yS = subBlockScan[i][1];
 
-                int significantCoefficients = 0;
+                int significantCount = 0;
                 bool inferSbDcSigCoeffFlag = false;
 
                 if ((i < lastSubBlock) && (i > 0))
@@ -138,7 +139,7 @@ namespace Openize.Heic.Decoder
 
                 if (i == lastSubBlock)
                 {
-                    significantCoefficients |= 1 << lastScanPos;
+                    significantPositions[significantCount++] = lastScanPos;
                 }
 
                 for (int n = (i == lastSubBlock) ? lastScanPos - 1 : 15; n >= 0; n--)
@@ -152,53 +153,39 @@ namespace Openize.Heic.Decoder
                             transformSkip, xC, yC,
                             coded_sub_block_flag, cIdx, log2TrafoSize, scanIdx))
                         {
-                            significantCoefficients |= 1 << n;
+                            significantPositions[significantCount++] = n;
                             inferSbDcSigCoeffFlag = false;
                         }
                     }
                     else
                     {
-                        significantCoefficients |= 1 << n;
+                        significantPositions[significantCount++] = n;
                     }
                 }
 
-                int firstSigScanPos = 16;
-                int lastSigScanPos = -1;
-                byte numGreater1Flag = 0;
+                int firstSigScanPos = significantCount == 0 ? 16 : significantPositions[significantCount - 1];
+                int lastSigScanPos = significantCount == 0 ? -1 : significantPositions[0];
                 int lastGreater1ScanPos = -1;
                 int greaterThanOne = 0;
                 int greaterThanTwo = 0;
+                int greater1Count = Math.Min(significantCount, 8);
 
-                firstCoeffInSubblock = true;
-
-                for (int n = 15; n >= 0; n--)
+                for (int significantIndex = 0; significantIndex < greater1Count; significantIndex++)
                 {
-                    if ((significantCoefficients & (1 << n)) != 0)
+                    int n = significantPositions[significantIndex];
+                    bool greater1 = cabac.read_coeff_abs_level_greater1_flag(cIdx, i,
+                        significantIndex == 0, firstSubblock,
+                        lastSubblock_greater1Ctx,
+                        ref lastInvocation_ctxSet,
+                        ref lastInvocation_greater1Ctx,
+                        ref lastInvocation_coeff_abs_level_greater1_flag);
+                    if (greater1)
                     {
-                        if (numGreater1Flag < 8)
+                        greaterThanOne |= 1 << n;
+                        if (lastGreater1ScanPos == -1)
                         {
-                            bool greater1 = cabac.read_coeff_abs_level_greater1_flag(cIdx, i,
-                                firstCoeffInSubblock, firstSubblock,
-                                lastSubblock_greater1Ctx,
-                                ref lastInvocation_ctxSet,
-                                ref lastInvocation_greater1Ctx,
-                                ref lastInvocation_coeff_abs_level_greater1_flag);
-                            if (greater1)
-                            {
-                                greaterThanOne |= 1 << n;
-                            }
-
-                            numGreater1Flag++;
-
-                            if (((greaterThanOne & (1 << n)) != 0) && lastGreater1ScanPos == -1)
-                                lastGreater1ScanPos = n;
+                            lastGreater1ScanPos = n;
                         }
-
-                        if (lastSigScanPos == -1)
-                            lastSigScanPos = n;
-
-                        firstSigScanPos = n;
-                        firstCoeffInSubblock = false;
                     }
                 }
                 firstSubblock = false;
@@ -231,19 +218,16 @@ namespace Openize.Heic.Decoder
                 }
 
                 int coefficientSigns = 0;
-                for (int n = 15; n >= 0; n--)
+                int signCount = significantCount - (signDataHiding && signHidden ? 1 : 0);
+                for (int significantIndex = 0; significantIndex < signCount; significantIndex++)
                 {
-                    if ((significantCoefficients & (1 << n)) != 0 &&
-                        (!signDataHiding || !signHidden || (n != firstSigScanPos)))
+                    int n = significantPositions[significantIndex];
+                    if (cabac.read_coeff_sign_flag())
                     {
-                        if (cabac.read_coeff_sign_flag())
-                        {
-                            coefficientSigns |= 1 << n;
-                        }
+                        coefficientSigns |= 1 << n;
                     }
                 }
 
-                int numSigCoeff = 0;
                 int sumAbsLevel = 0;
                 int TransCoeffLevel;
 
@@ -258,58 +242,54 @@ namespace Openize.Heic.Decoder
                 int cLastRiceParam = initRiceValue;
                 bool firstInvoke = true;
 
-                for (int n = 15; n >= 0; n--)
+                for (int significantIndex = 0; significantIndex < significantCount; significantIndex++)
                 {
-                    if ((significantCoefficients & (1 << n)) != 0)
+                    int n = significantPositions[significantIndex];
+                    xC = (xS << 2) + coefficientScan[n][0];
+                    yC = (yS << 2) + coefficientScan[n][1];
+                    int remainingLevel = 0;
+                    int baseLevel = 1 +
+                        (((greaterThanOne & (1 << n)) != 0) ? 1 : 0) +
+                        (((greaterThanTwo & (1 << n)) != 0) ? 1 : 0);
+
+                    if (baseLevel == ((significantIndex < 8) ?
+                        ((n == lastGreater1ScanPos) ? 3 : 2) : 1))
                     {
-                        xC = (xS << 2) + coefficientScan[n][0];
-                        yC = (yS << 2) + coefficientScan[n][1];
-                        int remainingLevel = 0;
-                        int baseLevel = 1 +
-                            (((greaterThanOne & (1 << n)) != 0) ? 1 : 0) +
-                            (((greaterThanTwo & (1 << n)) != 0) ? 1 : 0);
+                        remainingLevel = cabac.read_coeff_abs_level_remaining(cLastRiceParam);
 
-                        if (baseLevel == ((numSigCoeff < 8) ?
-                            ((n == lastGreater1ScanPos) ? 3 : 2) : 1))
+                        // 9.3.3.11
+                        cLastAbsLevel = baseLevel + remainingLevel;
+                        cLastRiceParam += (cLastAbsLevel > (3 * (1 << cLastRiceParam)) ? 1 : 0);
+
+                        if (!persistentRiceAdaptation)
+                            cLastRiceParam = Math.Min(cLastRiceParam, 4);
+
+                        if (persistentRiceAdaptation && firstInvoke)
                         {
-                            remainingLevel = cabac.read_coeff_abs_level_remaining(cLastRiceParam);
-
-                            // 9.3.3.11
-                            cLastAbsLevel = baseLevel + remainingLevel;
-                            cLastRiceParam += (cLastAbsLevel > (3 * (1 << cLastRiceParam)) ? 1 : 0);
-
-                            if (!persistentRiceAdaptation)
-                                cLastRiceParam = Math.Min(cLastRiceParam, 4);
-
-                            if (persistentRiceAdaptation && firstInvoke)
+                            if (remainingLevel >= (3 << (cabac.StatCoeff[sbType] / 4)))
                             {
-                                if (remainingLevel >= (3 << (cabac.StatCoeff[sbType] / 4)))
-                                {
-                                    cabac.StatCoeff[sbType]++;
-                                }
-                                else if (2 * remainingLevel < (1 << (cabac.StatCoeff[sbType] / 4)) &&
-                                    cabac.StatCoeff[sbType] > 0)
-                                {
-                                    cabac.StatCoeff[sbType]--;
-                                }
-
-                                firstInvoke = false;
+                                cabac.StatCoeff[sbType]++;
                             }
+                            else if (2 * remainingLevel < (1 << (cabac.StatCoeff[sbType] / 4)) &&
+                                cabac.StatCoeff[sbType] > 0)
+                            {
+                                cabac.StatCoeff[sbType]--;
+                            }
+
+                            firstInvoke = false;
                         }
-
-                        TransCoeffLevel = (remainingLevel + baseLevel) * (((coefficientSigns & (1 << n)) != 0) ? -1 : 1);
-
-                        if (signDataHiding && signHidden)
-                        {
-                            sumAbsLevel += (remainingLevel + baseLevel);
-                            if ((n == firstSigScanPos) && ((sumAbsLevel % 2) == 1))
-                                TransCoeffLevel = -1 * TransCoeffLevel;
-                        }
-
-                        coefficients[xC * transformSize + yC] = TransCoeffLevel;
-
-                        numSigCoeff++;
                     }
+
+                    TransCoeffLevel = (remainingLevel + baseLevel) * (((coefficientSigns & (1 << n)) != 0) ? -1 : 1);
+
+                    if (signDataHiding && signHidden)
+                    {
+                        sumAbsLevel += (remainingLevel + baseLevel);
+                        if ((n == firstSigScanPos) && ((sumAbsLevel % 2) == 1))
+                            TransCoeffLevel = -1 * TransCoeffLevel;
+                    }
+
+                    coefficients[xC * transformSize + yC] = TransCoeffLevel;
                 }
             }
         }
